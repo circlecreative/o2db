@@ -35,7 +35,6 @@
 		"wiki"        : "http://o2system.center/standalone/o2gears/user-guide/getting-started.html",
 		"github-wiki" : "http://github.com/circlecreative/o2gears/wiki"
 	},
-	"minimum-stability" : "dev",
 	"require"           : {
 		"php"              : ">=5.4.0",
 		"o2system/o2glob"  : "*",
