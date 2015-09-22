@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,23 +29,31 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
-namespace O2System\O2DB\Drivers\MySQL;
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
+// ------------------------------------------------------------------------
 
+namespace O2System\O2DB\Drivers\Mysql;
 
-Class Forge extends \O2System\O2DB\Interfaces\Forge
+// ------------------------------------------------------------------------
+
+use O2System\O2DB\Interfaces\Forge as ForgeInterface;
+
+/**
+ * MySQL Database Forge
+ *
+ * @author      Circle Creative Developer Team
+ */
+class Forge extends ForgeInterface
 {
-
     /**
      * CREATE DATABASE statement
      *
-     * @var    string
+     * @access  protected
+     * @type    string
      */
     protected $_create_database = 'CREATE DATABASE %s CHARACTER SET %s COLLATE %s';
 
@@ -55,14 +63,16 @@ Class Forge extends \O2System\O2DB\Interfaces\Forge
      * Whether table keys are created from within the
      * CREATE TABLE statement.
      *
-     * @var    bool
+     * @access  protected
+     * @type    bool
      */
     protected $_create_table_keys = TRUE;
 
     /**
      * UNSIGNED support
      *
-     * @var    array
+     * @access  protected
+     * @type    array
      */
     protected $_unsigned = array(
         'TINYINT',
@@ -82,7 +92,8 @@ Class Forge extends \O2System\O2DB\Interfaces\Forge
     /**
      * NULL value representation in CREATE/ALTER TABLE statements
      *
-     * @var    string
+     * @access  protected
+     * @type    string
      */
     protected $_null = 'NULL';
 
@@ -91,11 +102,10 @@ Class Forge extends \O2System\O2DB\Interfaces\Forge
     /**
      * CREATE TABLE attributes
      *
-     * @access protected
+     * @param   array $attributes Associative array of table attributes
      *
-     * @param    array $attributes Associative array of table attributes
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _create_table_attr( $attributes )
     {
@@ -109,14 +119,14 @@ Class Forge extends \O2System\O2DB\Interfaces\Forge
             }
         }
 
-        if( ! empty( $this->db->charset ) && ! strpos( $sql, 'CHARACTER SET' ) && ! strpos( $sql, 'CHARSET' ) )
+        if( ! empty( $this->_driver->charset ) && ! strpos( $sql, 'CHARACTER SET' ) && ! strpos( $sql, 'CHARSET' ) )
         {
-            $sql .= ' DEFAULT CHARACTER SET = ' . $this->db->charset;
+            $sql .= ' DEFAULT CHARACTER SET = ' . $this->_driver->charset;
         }
 
-        if( ! empty( $this->db->collate ) && ! strpos( $sql, 'COLLATE' ) )
+        if( ! empty( $this->_driver->collate ) && ! strpos( $sql, 'COLLATE' ) )
         {
-            $sql .= ' COLLATE = ' . $this->db->collate;
+            $sql .= ' COLLATE = ' . $this->_driver->collate;
         }
 
         return $sql;
@@ -127,13 +137,12 @@ Class Forge extends \O2System\O2DB\Interfaces\Forge
     /**
      * ALTER TABLE
      *
-     * @access protected
+     * @param   string $alter_type ALTER type
+     * @param   string $table      Table name
+     * @param   mixed  $field      Column definition
      *
-     * @param    string $alter_type ALTER type
-     * @param    string $table      Table name
-     * @param    mixed  $field      Column definition
-     *
-     * @return    string|string[]
+     * @access  protected
+     * @return  string|string[]
      */
     protected function _alter_table( $alter_type, $table, $field )
     {
@@ -142,7 +151,7 @@ Class Forge extends \O2System\O2DB\Interfaces\Forge
             return parent::_alter_table( $alter_type, $table, $field );
         }
 
-        $sql = 'ALTER TABLE ' . $this->db->escape_identifiers( $table );
+        $sql = 'ALTER TABLE ' . $this->_driver->escape_identifiers( $table );
         for( $i = 0, $c = count( $field ); $i < $c; $i++ )
         {
             if( $field[ $i ][ '_literal' ] !== FALSE )
@@ -174,16 +183,15 @@ Class Forge extends \O2System\O2DB\Interfaces\Forge
     /**
      * Process column
      *
-     * @access protected
+     * @param   array $field
      *
-     * @param    array $field
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _process_column( $field )
     {
         $extra_clause = isset( $field[ 'after' ] )
-            ? ' AFTER ' . $this->db->escape_identifiers( $field[ 'after' ] ) : '';
+            ? ' AFTER ' . $this->_driver->escape_identifiers( $field[ 'after' ] ) : '';
 
         if( empty( $extra_clause ) && isset( $field[ 'first' ] ) && $field[ 'first' ] === TRUE )
         {
@@ -191,8 +199,8 @@ Class Forge extends \O2System\O2DB\Interfaces\Forge
         }
 
 
-        return $this->db->escape_identifiers( $field[ 'name' ] )
-               . ( empty( $field[ 'new_name' ] ) ? '' : ' ' . $this->db->escape_identifiers( $field[ 'new_name' ] ) )
+        return $this->_driver->escape_identifiers( $field[ 'name' ] )
+               . ( empty( $field[ 'new_name' ] ) ? '' : ' ' . $this->_driver->escape_identifiers( $field[ 'new_name' ] ) )
                . ' ' . $field[ 'type' ] . $field[ 'length' ]
                . $field[ 'unsigned' ]
                . $field[ 'null' ]
@@ -208,11 +216,10 @@ Class Forge extends \O2System\O2DB\Interfaces\Forge
     /**
      * Process indexes
      *
-     * @access protected
+     * @param   string  $table  (ignored)
      *
-     * @param    string $table (ignored)
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _process_indexes( $table )
     {
@@ -239,8 +246,8 @@ Class Forge extends \O2System\O2DB\Interfaces\Forge
 
             is_array( $this->keys[ $i ] ) OR $this->keys[ $i ] = array( $this->keys[ $i ] );
 
-            $sql .= ",\n\tKEY " . $this->db->escape_identifiers( implode( '_', $this->keys[ $i ] ) )
-                    . ' (' . implode( ', ', $this->db->escape_identifiers( $this->keys[ $i ] ) ) . ')';
+            $sql .= ",\n\tKEY " . $this->_driver->escape_identifiers( implode( '_', $this->keys[ $i ] ) )
+                    . ' (' . implode( ', ', $this->_driver->escape_identifiers( $this->keys[ $i ] ) ) . ')';
         }
 
         $this->keys = array();
@@ -249,6 +256,3 @@ Class Forge extends \O2System\O2DB\Interfaces\Forge
     }
 
 }
-
-/* End of file Forge.php */
-/* Location: ./o2system/libraries/database/drivers/MySQL/Forge.php */

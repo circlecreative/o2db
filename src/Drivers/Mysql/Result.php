@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,27 +29,33 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
-namespace O2System\O2DB\Drivers\MySQL;
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
+// ------------------------------------------------------------------------
 
+namespace O2System\O2DB\Drivers\Mysql;
 
-class Result extends \O2System\O2DB\Interfaces\Result
+// ------------------------------------------------------------------------
+
+use O2System\O2DB\Interfaces\Result as ResultInterface;
+
+/**
+ * MySQL Database Result
+ *
+ * @author      Circle Creative Developer Team
+ */
+class Result extends ResultInterface
 {
 
     /**
      * Class constructor
      *
-     * @access public
+     * @param   object &$driver_object
      *
-     * @param    object &$driver_object
-     *
-     * @return    void
+     * @access  public
      */
     public function __construct( &$driver_object )
     {
@@ -57,7 +63,7 @@ class Result extends \O2System\O2DB\Interfaces\Result
 
         // Required, due to mysql_data_seek() causing nightmares
         // with empty result sets
-        $this->num_rows = mysql_num_rows( $this->result_id );
+        $this->num_rows = mysql_num_rows( $this->id_result );
     }
 
     // --------------------------------------------------------------------
@@ -65,9 +71,8 @@ class Result extends \O2System\O2DB\Interfaces\Result
     /**
      * Number of rows in the result set
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function num_rows()
     {
@@ -81,15 +86,14 @@ class Result extends \O2System\O2DB\Interfaces\Result
      *
      * Generates an array of column names
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function list_fields()
     {
         $field_names = array();
-        mysql_field_seek( $this->result_id, 0 );
-        while( $field = mysql_fetch_field( $this->result_id ) )
+        mysql_field_seek( $this->id_result, 0 );
+        while( $field = mysql_fetch_field( $this->id_result ) )
         {
             $field_names[ ] = $field->name;
         }
@@ -104,9 +108,8 @@ class Result extends \O2System\O2DB\Interfaces\Result
      *
      * Generates an array of objects containing field meta-data
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function field_data()
     {
@@ -114,10 +117,10 @@ class Result extends \O2System\O2DB\Interfaces\Result
         for( $i = 0, $c = $this->num_fields(); $i < $c; $i++ )
         {
             $retval[ $i ] = new \stdClass();
-            $retval[ $i ]->name = mysql_field_name( $this->result_id, $i );
-            $retval[ $i ]->type = mysql_field_type( $this->result_id, $i );
-            $retval[ $i ]->max_length = mysql_field_len( $this->result_id, $i );
-            $retval[ $i ]->primary_key = (int)( strpos( mysql_field_flags( $this->result_id, $i ), 'primary_key' ) !== FALSE );
+            $retval[ $i ]->name = mysql_field_name( $this->id_result, $i );
+            $retval[ $i ]->type = mysql_field_type( $this->id_result, $i );
+            $retval[ $i ]->max_length = mysql_field_len( $this->id_result, $i );
+            $retval[ $i ]->primary_key = (int)( strpos( mysql_field_flags( $this->id_result, $i ), 'primary_key' ) !== FALSE );
         }
 
         return $retval;
@@ -128,13 +131,12 @@ class Result extends \O2System\O2DB\Interfaces\Result
     /**
      * Number of fields in the result set
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function num_fields()
     {
-        return mysql_num_fields( $this->result_id );
+        return mysql_num_fields( $this->id_result );
     }
 
     // --------------------------------------------------------------------
@@ -142,16 +144,15 @@ class Result extends \O2System\O2DB\Interfaces\Result
     /**
      * Free the result
      *
-     * @access public
-     *
-     * @return    void
+     * @access  public
+     * @return  void
      */
     public function free_result()
     {
-        if( is_resource( $this->result_id ) )
+        if( is_resource( $this->id_result ) )
         {
-            mysql_free_result( $this->result_id );
-            $this->result_id = FALSE;
+            mysql_free_result( $this->id_result );
+            $this->id_result = FALSE;
         }
     }
 
@@ -164,16 +165,15 @@ class Result extends \O2System\O2DB\Interfaces\Result
      * this internally before fetching results to make sure the
      * result set starts at zero.
      *
-     * @access public
+     * @param   int $n
      *
-     * @param    int $n
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function data_seek( $n = 0 )
     {
         return $this->num_rows
-            ? mysql_data_seek( $this->result_id, $n )
+            ? mysql_data_seek( $this->id_result, $n )
             : FALSE;
     }
 
@@ -184,13 +184,12 @@ class Result extends \O2System\O2DB\Interfaces\Result
      *
      * Returns the result set as an array
      *
-     * @access protected
-     *
-     * @return    array
+     * @access  protected
+     * @return  array
      */
     protected function _fetch_assoc()
     {
-        return mysql_fetch_assoc( $this->result_id );
+        return mysql_fetch_assoc( $this->id_result );
     }
 
     // --------------------------------------------------------------------
@@ -200,18 +199,14 @@ class Result extends \O2System\O2DB\Interfaces\Result
      *
      * Returns the result set as an object
      *
-     * @access protected
+     * @param   string $class_name
      *
-     * @param    string $class_name
-     *
-     * @return    object
+     * @access  protected
+     * @return  object
      */
     protected function _fetch_object( $class_name = '\stdClass' )
     {
-        return mysql_fetch_object( $this->result_id, $class_name );
+        return mysql_fetch_object( $this->id_result, $class_name );
     }
 
 }
-
-/* End of file Result.php */
-/* Location: ./o2system/libraries/database/drivers/MySQL/Result.php */

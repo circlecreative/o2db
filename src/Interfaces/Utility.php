@@ -58,34 +58,33 @@ use O2System\O2Gears\Logger;
  */
 abstract class Utility
 {
-
     /**
      * Database object
      *
-     * @var    object
+     * @type    object
      */
-    protected $db;
+    protected $_driver;
 
     // --------------------------------------------------------------------
 
     /**
      * List databases statement
      *
-     * @var    string
+     * @type    string
      */
     protected $_list_databases = FALSE;
 
     /**
      * OPTIMIZE TABLE statement
      *
-     * @var    string
+     * @type    string
      */
     protected $_optimize_table = FALSE;
 
     /**
      * REPAIR TABLE statement
      *
-     * @var    string
+     * @type    string
      */
     protected $_repair_table = FALSE;
 
@@ -94,13 +93,11 @@ abstract class Utility
     /**
      * Class constructor
      *
-     * @param    object &$db Database object
-     *
-     * @return    void
+     * @param   object  &$driver Database Object
      */
-    public function __construct( &$db )
+    public function __construct( &$driver )
     {
-        $this->db =& $db;
+        $this->_driver =& $driver;
         Logger::info( 'Database Utility Class Initialized' );
     }
 
@@ -109,34 +106,40 @@ abstract class Utility
     /**
      * List databases
      *
-     * @return    array
+     * @return  array
+     * @throws  \Exception
      */
     public function list_databases()
     {
         // Is there a cached result?
-        if( isset( $this->db->data_cache[ 'db_names' ] ) )
+        if( isset( $this->_driver->data_cache[ 'db_names' ] ) )
         {
-            return $this->db->data_cache[ 'db_names' ];
+            return $this->_driver->data_cache[ 'db_names' ];
         }
         elseif( $this->_list_databases === FALSE )
         {
-            return ( $this->db->db_debug ) ? $this->db->display_error( 'db_unsupported_feature' ) : FALSE;
+            if( $this->_driver->debug_enabled )
+            {
+                throw new \Exception( 'Unsupported feature of the database platform you are using.' );
+            }
+
+            return FALSE;
         }
 
-        $this->db->data_cache[ 'db_names' ] = array();
+        $this->_driver->data_cache[ 'db_names' ] = array();
 
-        $query = $this->db->query( $this->_list_databases );
+        $query = $this->_driver->query( $this->_list_databases );
         if( $query === FALSE )
         {
-            return $this->db->data_cache[ 'db_names' ];
+            return $this->_driver->data_cache[ 'db_names' ];
         }
 
         for( $i = 0, $query = $query->result_array(), $c = count( $query ); $i < $c; $i++ )
         {
-            $this->db->data_cache[ 'db_names' ][ ] = current( $query[ $i ] );
+            $this->_driver->data_cache[ 'db_names' ][ ] = current( $query[ $i ] );
         }
 
-        return $this->db->data_cache[ 'db_names' ];
+        return $this->_driver->data_cache[ 'db_names' ];
     }
 
     // --------------------------------------------------------------------
@@ -144,9 +147,9 @@ abstract class Utility
     /**
      * Determine if a particular database exists
      *
-     * @param    string $database_name
+     * @param   string  $database_name
      *
-     * @return    bool
+     * @return  bool
      */
     public function database_exists( $database_name )
     {
@@ -158,18 +161,24 @@ abstract class Utility
     /**
      * Optimize Table
      *
-     * @param    string $table_name
+     * @param   string  $table_name
      *
-     * @return    mixed
+     * @return  mixed
+     * @throws  \Exception
      */
     public function optimize_table( $table_name )
     {
         if( $this->_optimize_table === FALSE )
         {
-            return ( $this->db->db_debug ) ? $this->db->display_error( 'db_unsupported_feature' ) : FALSE;
+            if( $this->_driver->debug_enabled )
+            {
+                throw new \Exception( 'Unsupported feature of the database platform you are using.' );
+            }
+
+            return FALSE;
         }
 
-        $query = $this->db->query( sprintf( $this->_optimize_table, $this->db->escape_identifiers( $table_name ) ) );
+        $query = $this->_driver->query( sprintf( $this->_optimize_table, $this->_driver->escape_identifiers( $table_name ) ) );
         if( $query !== FALSE )
         {
             $query = $query->result_array();
@@ -185,19 +194,25 @@ abstract class Utility
     /**
      * Optimize Database
      *
-     * @return    mixed
+     * @return  mixed
+     * @throws  \Exception
      */
     public function optimize_database()
     {
         if( $this->_optimize_table === FALSE )
         {
-            return ( $this->db->db_debug ) ? $this->db->display_error( 'db_unsupported_feature' ) : FALSE;
+            if( $this->_driver->debug_enabled )
+            {
+                throw new \Exception( 'Unsupported feature of the database platform you are using.' );
+            }
+
+            return FALSE;
         }
 
         $result = array();
-        foreach( $this->db->list_tables() as $table_name )
+        foreach( $this->_driver->list_tables() as $table_name )
         {
-            $res = $this->db->query( sprintf( $this->_optimize_table, $this->db->escape_identifiers( $table_name ) ) );
+            $res = $this->_driver->query( sprintf( $this->_optimize_table, $this->_driver->escape_identifiers( $table_name ) ) );
             if( is_bool( $res ) )
             {
                 return $res;
@@ -206,7 +221,7 @@ abstract class Utility
             // Build the result array...
             $res = $res->result_array();
             $res = current( $res );
-            $key = str_replace( $this->db->database . '.', '', current( $res ) );
+            $key = str_replace( $this->_driver->database . '.', '', current( $res ) );
             $keys = array_keys( $res );
             unset( $res[ $keys[ 0 ] ] );
 
@@ -221,18 +236,24 @@ abstract class Utility
     /**
      * Repair Table
      *
-     * @param    string $table_name
+     * @param   string  $table_name
      *
-     * @return    mixed
+     * @return  mixed
+     * @throws  \Exception
      */
     public function repair_table( $table_name )
     {
         if( $this->_repair_table === FALSE )
         {
-            return ( $this->db->db_debug ) ? $this->db->display_error( 'db_unsupported_feature' ) : FALSE;
+            if( $this->_driver->debug_enabled )
+            {
+                throw new \Exception( 'Unsupported feature of the database platform you are using.' );
+            }
+
+            return FALSE;
         }
 
-        $query = $this->db->query( sprintf( $this->_repair_table, $this->db->escape_identifiers( $table_name ) ) );
+        $query = $this->_driver->query( sprintf( $this->_repair_table, $this->_driver->escape_identifiers( $table_name ) ) );
         if( is_bool( $query ) )
         {
             return $query;
@@ -248,19 +269,19 @@ abstract class Utility
     /**
      * Generate CSV from a query result object
      *
-     * @param    object $query     Query result object
-     * @param    string $delim     Delimiter (default: ,)
-     * @param    string $newline   Newline character (default: \n)
-     * @param    string $enclosure Enclosure (default: ")
+     * @param   object  $query      Query result object
+     * @param   string  $delim      Delimiter (default: ,)
+     * @param   string  $newline    Newline character (default: \n)
+     * @param   string  $enclosure  Enclosure (default: ")
      *
-     * @return    string
+     * @return  string
+     * @throws  \Exception
      */
     public function csv_from_result( $query, $delim = ',', $newline = "\n", $enclosure = '"' )
     {
         if( ! is_object( $query ) OR ! method_exists( $query, 'list_fields' ) )
         {
-            Exception::show( 'You must submit a valid result object' );
-            //show_error('You must submit a valid result object');
+            throw new \Exception( 'You must submit a valid result object' );
         }
 
         $out = '';
@@ -290,10 +311,11 @@ abstract class Utility
     /**
      * Generate XML data from a query result object
      *
-     * @param    object $query  Query result object
-     * @param    array  $params Any preferences
+     * @param   object $query  Query result object
+     * @param   array  $params Any preferences
      *
-     * @return    string
+     * @return  string
+     * @throws  \Exception
      */
     public function xml_from_result( $query, $params = array() )
     {
@@ -337,9 +359,9 @@ abstract class Utility
     /**
      * Database Backup
      *
-     * @param    array $params
+     * @param   array   $params
      *
-     * @return    string
+     * @return  string
      */
     public function backup( $params = array() )
     {
@@ -379,7 +401,7 @@ abstract class Utility
         // If no table names were submitted we'll fetch the entire table list
         if( count( $prefs[ 'tables' ] ) === 0 )
         {
-            $prefs[ 'tables' ] = $this->db->list_tables();
+            $prefs[ 'tables' ] = $this->_driver->list_tables();
         }
 
         // Validate the format
@@ -394,9 +416,9 @@ abstract class Utility
             OR ( $prefs[ 'format' ] === 'zip' && ! function_exists( 'gzcompress' ) )
         )
         {
-            if( $this->db->db_debug )
+            if( $this->_driver->db_debug )
             {
-                return $this->db->display_error( 'db_unsupported_compression' );
+                return $this->_driver->display_error( 'db_unsupported_compression' );
             }
 
             $prefs[ 'format' ] = 'txt';
@@ -408,7 +430,7 @@ abstract class Utility
             // Set the filename if not provided (only needed with Zip files)
             if( $prefs[ 'filename' ] === '' )
             {
-                $prefs[ 'filename' ] = ( count( $prefs[ 'tables' ] ) === 1 ? $prefs[ 'tables' ] : $this->db->database )
+                $prefs[ 'filename' ] = ( count( $prefs[ 'tables' ] ) === 1 ? $prefs[ 'tables' ] : $this->_driver->database )
                                        . date( 'Y-m-d_H-i', time() ) . '.sql';
             }
             else

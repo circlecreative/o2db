@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,25 +29,31 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
-namespace O2System\O2DB\Drivers\ODBC;
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
+// ------------------------------------------------------------------------
 
+namespace O2System\O2DB\Drivers\Odbc;
 
-class Result extends \O2System\O2DB\Interfaces\Result
+// ------------------------------------------------------------------------
+
+use O2System\O2DB\Interfaces\Result as ResultInterface;
+
+/**
+ * ODBC (Unified) Database Result
+ *
+ * @author      Circle Creative Developer Team
+ */
+class Result extends ResultInterface
 {
-
     /**
      * Number of rows in the result set
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function num_rows()
     {
@@ -55,7 +61,7 @@ class Result extends \O2System\O2DB\Interfaces\Result
         {
             return $this->num_rows;
         }
-        elseif( ( $this->num_rows = odbc_num_rows( $this->result_id ) ) !== -1 )
+        elseif( ( $this->num_rows = odbc_num_rows( $this->id_result ) ) !== -1 )
         {
             return $this->num_rows;
         }
@@ -80,9 +86,8 @@ class Result extends \O2System\O2DB\Interfaces\Result
      *
      * Generates an array of column names
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function list_fields()
     {
@@ -93,7 +98,7 @@ class Result extends \O2System\O2DB\Interfaces\Result
         {
             for( $i = 1; $i <= $num_fields; $i++ )
             {
-                $field_names[ ] = odbc_field_name( $this->result_id, $i );
+                $field_names[ ] = odbc_field_name( $this->id_result, $i );
             }
         }
 
@@ -105,13 +110,12 @@ class Result extends \O2System\O2DB\Interfaces\Result
     /**
      * Number of fields in the result set
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function num_fields()
     {
-        return odbc_num_fields( $this->result_id );
+        return odbc_num_fields( $this->id_result );
     }
 
     // --------------------------------------------------------------------
@@ -121,24 +125,23 @@ class Result extends \O2System\O2DB\Interfaces\Result
      *
      * Generates an array of objects containing field meta-data
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function field_data()
     {
-        $retval = array();
+        $data = array();
         for( $i = 0, $odbc_index = 1, $c = $this->num_fields(); $i < $c; $i++, $odbc_index++ )
         {
-            $retval[ $i ] = new \stdClass();
-            $retval[ $i ]->name = odbc_field_name( $this->result_id, $odbc_index );
-            $retval[ $i ]->type = odbc_field_type( $this->result_id, $odbc_index );
-            $retval[ $i ]->max_length = odbc_field_len( $this->result_id, $odbc_index );
-            $retval[ $i ]->primary_key = 0;
-            $retval[ $i ]->default = '';
+            $data[ $i ] = new \stdClass();
+            $data[ $i ]->name = odbc_field_name( $this->id_result, $odbc_index );
+            $data[ $i ]->type = odbc_field_type( $this->id_result, $odbc_index );
+            $data[ $i ]->max_length = odbc_field_len( $this->id_result, $odbc_index );
+            $data[ $i ]->primary_key = 0;
+            $data[ $i ]->default = '';
         }
 
-        return $retval;
+        return $data;
     }
 
     // --------------------------------------------------------------------
@@ -146,16 +149,15 @@ class Result extends \O2System\O2DB\Interfaces\Result
     /**
      * Free the result
      *
-     * @access public
-     *
-     * @return    void
+     * @access  public
+     * @return  void
      */
     public function free_result()
     {
-        if( is_resource( $this->result_id ) )
+        if( is_resource( $this->id_result ) )
         {
-            odbc_free_result( $this->result_id );
-            $this->result_id = FALSE;
+            odbc_free_result( $this->id_result );
+            $this->id_result = FALSE;
         }
     }
 
@@ -166,13 +168,12 @@ class Result extends \O2System\O2DB\Interfaces\Result
      *
      * Returns the result set as an array
      *
-     * @access protected
-     *
-     * @return    array
+     * @access  protected
+     * @return  array
      */
     protected function _fetch_assoc()
     {
-        return odbc_fetch_array( $this->result_id );
+        return odbc_fetch_array( $this->id_result );
     }
 
     // --------------------------------------------------------------------
@@ -182,15 +183,14 @@ class Result extends \O2System\O2DB\Interfaces\Result
      *
      * Returns the result set as an object
      *
-     * @access protected
+     * @param   string $class_name
      *
-     * @param    string $class_name
-     *
-     * @return    object
+     * @access  protected
+     * @return  object
      */
     protected function _fetch_object( $class_name = '\stdClass' )
     {
-        $row = odbc_fetch_object( $this->result_id );
+        $row = odbc_fetch_object( $this->id_result );
 
         if( $class_name === '\stdClass' OR ! $row )
         {
@@ -219,14 +219,14 @@ if( ! function_exists( 'odbc_fetch_array' ) )
      * it is not available (odbc_fetch_array() requires unixODBC)
      *
      * @param    resource &$result
-     * @param    int      $rownumber
+     * @param    int      $row_number
      *
      * @return    array
      */
-    function odbc_fetch_array( &$result, $rownumber = 1 )
+    function odbc_fetch_array( &$result, $row_number = 1 )
     {
         $rs = array();
-        if( ! odbc_fetch_into( $result, $rs, $rownumber ) )
+        if( ! odbc_fetch_into( $result, $rs, $row_number ) )
         {
             return FALSE;
         }
@@ -253,14 +253,14 @@ if( ! function_exists( 'odbc_fetch_object' ) )
      * it is not available.
      *
      * @param    resource &$result
-     * @param    int      $rownumber
+     * @param    int      $row_number
      *
      * @return    object
      */
-    function odbc_fetch_object( &$result, $rownumber = 1 )
+    function odbc_fetch_object( &$result, $row_number = 1 )
     {
         $rs = array();
-        if( ! odbc_fetch_into( $result, $rs, $rownumber ) )
+        if( ! odbc_fetch_into( $result, $rs, $row_number ) )
         {
             return FALSE;
         }
@@ -275,6 +275,3 @@ if( ! function_exists( 'odbc_fetch_object' ) )
         return $rs_object;
     }
 }
-
-/* End of file Result.php */
-/* Location: ./o2system/libraries/database/drivers/ODBC/Result.php */

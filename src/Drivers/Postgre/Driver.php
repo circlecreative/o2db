@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,31 +29,31 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
+// ------------------------------------------------------------------------
 
 namespace O2System\O2DB\Drivers\Postgre;
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
 
+// ------------------------------------------------------------------------
 
-class Driver extends \O2System\O2DB
+use O2System\O2DB\Interfaces\Driver as DriverInterface;
+
+/**
+ * Postgre Database Driver
+ *
+ * @author      Circle Creative Developer Team
+ */
+class Driver extends DriverInterface
 {
-
-    /**
-     * Database driver
-     *
-     * @var    string
-     */
-    public $dbdriver = 'postgre';
-
     /**
      * Database schema
      *
-     * @var    string
+     * @access  protected
+     * @type    string
      */
     public $schema = 'public';
 
@@ -62,22 +62,21 @@ class Driver extends \O2System\O2DB
     /**
      * ORDER BY random keyword
      *
-     * @var    array
+     * @access  protected
+     * @type    array
      */
-    protected $_random_keyword = array( 'RANDOM()', 'RANDOM()' );
+    protected $_random_keywords = array( 'RANDOM()', 'RANDOM()' );
 
     // --------------------------------------------------------------------
 
     /**
      * Class constructor
      *
-     * Creates a DSN string to be used for db_connect() and db_pconnect()
+     * Creates a DSN string to be used for connect() and db_pconnect()
      *
-     * @access public
+     * @param   array $params
      *
-     * @param    array $params
-     *
-     * @return    void
+     * @access  public
      */
     public function __construct( $params )
     {
@@ -138,23 +137,22 @@ class Driver extends \O2System\O2DB
     /**
      * Database connection
      *
-     * @access public
+     * @param   bool $persistent
      *
-     * @param    bool $persistent
-     *
-     * @return    resource
+     * @access  public
+     * @return  resource
      */
-    public function db_connect( $persistent = FALSE )
+    public function connect( $persistent = FALSE )
     {
-        $this->conn_id = ( $persistent === TRUE )
+        $this->id_connection = ( $persistent === TRUE )
             ? pg_pconnect( $this->dsn )
             : pg_connect( $this->dsn );
 
-        if( $this->conn_id !== FALSE )
+        if( $this->id_connection !== FALSE )
         {
             if( $persistent === TRUE
-                && pg_connection_status( $this->conn_id ) === PGSQL_CONNECTION_BAD
-                && pg_ping( $this->conn_id ) === FALSE
+                && pg_connection_status( $this->id_connection ) === PGSQL_CONNECTION_BAD
+                && pg_ping( $this->id_connection ) === FALSE
             )
             {
                 return FALSE;
@@ -163,7 +161,7 @@ class Driver extends \O2System\O2DB
             empty( $this->schema ) OR $this->simple_query( 'SET search_path TO ' . $this->schema . ',public' );
         }
 
-        return $this->conn_id;
+        return $this->id_connection;
     }
 
     // --------------------------------------------------------------------
@@ -174,15 +172,14 @@ class Driver extends \O2System\O2DB
      * Keep / reestablish the db connection if no queries have been
      * sent for a length of time exceeding the server's idle timeout
      *
-     * @access public
-     *
-     * @return    void
+     * @access  public
+     * @return  void
      */
     public function reconnect()
     {
-        if( pg_ping( $this->conn_id ) === FALSE )
+        if( pg_ping( $this->id_connection ) === FALSE )
         {
-            $this->conn_id = FALSE;
+            $this->id_connection = FALSE;
         }
     }
 
@@ -191,9 +188,8 @@ class Driver extends \O2System\O2DB
     /**
      * Database version number
      *
-     * @access public
-     *
-     * @return    string
+     * @access  public
+     * @return  string
      */
     public function version()
     {
@@ -202,7 +198,7 @@ class Driver extends \O2System\O2DB
             return $this->data_cache[ 'version' ];
         }
 
-        if( ! $this->conn_id OR ( $pg_version = pg_version( $this->conn_id ) ) === FALSE )
+        if( ! $this->id_connection OR ( $pg_version = pg_version( $this->id_connection ) ) === FALSE )
         {
             return FALSE;
         }
@@ -223,11 +219,10 @@ class Driver extends \O2System\O2DB
     /**
      * Begin Transaction
      *
-     * @access public
+     * @param   bool $test_mode
      *
-     * @param    bool $test_mode
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_begin( $test_mode = FALSE )
     {
@@ -242,7 +237,7 @@ class Driver extends \O2System\O2DB
         // even if the queries produce a successful result.
         $this->_trans_failure = ( $test_mode === TRUE );
 
-        return (bool)pg_query( $this->conn_id, 'BEGIN' );
+        return (bool)pg_query( $this->id_connection, 'BEGIN' );
     }
 
     // --------------------------------------------------------------------
@@ -250,9 +245,8 @@ class Driver extends \O2System\O2DB
     /**
      * Commit Transaction
      *
-     * @access public
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_commit()
     {
@@ -262,7 +256,7 @@ class Driver extends \O2System\O2DB
             return TRUE;
         }
 
-        return (bool)pg_query( $this->conn_id, 'COMMIT' );
+        return (bool)pg_query( $this->id_connection, 'COMMIT' );
     }
 
     // --------------------------------------------------------------------
@@ -270,9 +264,8 @@ class Driver extends \O2System\O2DB
     /**
      * Rollback Transaction
      *
-     * @access public
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_rollback()
     {
@@ -282,7 +275,7 @@ class Driver extends \O2System\O2DB
             return TRUE;
         }
 
-        return (bool)pg_query( $this->conn_id, 'ROLLBACK' );
+        return (bool)pg_query( $this->id_connection, 'ROLLBACK' );
     }
 
     // --------------------------------------------------------------------
@@ -290,11 +283,10 @@ class Driver extends \O2System\O2DB
     /**
      * Determines if a query is a "write" type.
      *
-     * @access public
+     * @param   string $sql An SQL query string
      *
-     * @param    string    An SQL query string
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function is_write_type( $sql )
     {
@@ -310,13 +302,12 @@ class Driver extends \O2System\O2DB
     /**
      * Affected Rows
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function affected_rows()
     {
-        return pg_affected_rows( $this->result_id );
+        return pg_affected_rows( $this->id_result );
     }
 
     // --------------------------------------------------------------------
@@ -324,13 +315,12 @@ class Driver extends \O2System\O2DB
     /**
      * Insert ID
      *
-     * @access public
-     *
-     * @return    string
+     * @access  public
+     * @return  string
      */
     public function insert_id()
     {
-        $v = pg_version( $this->conn_id );
+        $v = pg_version( $this->id_connection );
         $v = isset( $v[ 'server' ] ) ? $v[ 'server' ] : 0; // 'server' key is only available since PosgreSQL 7.4
 
         $table = ( func_num_args() > 0 ) ? func_get_arg( 0 ) : NULL;
@@ -359,7 +349,7 @@ class Driver extends \O2System\O2DB
         }
         else
         {
-            return pg_last_oid( $this->result_id );
+            return pg_last_oid( $this->id_result );
         }
 
         $query = $this->query( $sql );
@@ -373,11 +363,10 @@ class Driver extends \O2System\O2DB
     /**
      * Returns an object with field data
      *
-     * @access public
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function field_data( $table )
     {
@@ -391,17 +380,17 @@ class Driver extends \O2System\O2DB
         }
         $query = $query->result_object();
 
-        $retval = array();
+        $data = array();
         for( $i = 0, $c = count( $query ); $i < $c; $i++ )
         {
-            $retval[ $i ] = new \stdClass();
-            $retval[ $i ]->name = $query[ $i ]->column_name;
-            $retval[ $i ]->type = $query[ $i ]->data_type;
-            $retval[ $i ]->max_length = ( $query[ $i ]->character_maximum_length > 0 ) ? $query[ $i ]->character_maximum_length : $query[ $i ]->numeric_precision;
-            $retval[ $i ]->default = $query[ $i ]->column_default;
+            $data[ $i ] = new \stdClass();
+            $data[ $i ]->name = $query[ $i ]->column_name;
+            $data[ $i ]->type = $query[ $i ]->data_type;
+            $data[ $i ]->max_length = ( $query[ $i ]->character_maximum_length > 0 ) ? $query[ $i ]->character_maximum_length : $query[ $i ]->numeric_precision;
+            $data[ $i ]->default = $query[ $i ]->column_default;
         }
 
-        return $retval;
+        return $data;
     }
 
     // --------------------------------------------------------------------
@@ -412,13 +401,12 @@ class Driver extends \O2System\O2DB
      * Returns an array containing code and message of the last
      * database error that has occured.
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function error()
     {
-        return array( 'code' => '', 'message' => pg_last_error( $this->conn_id ) );
+        return array( 'code' => '', 'message' => pg_last_error( $this->id_connection ) );
     }
 
     // --------------------------------------------------------------------
@@ -426,37 +414,36 @@ class Driver extends \O2System\O2DB
     /**
      * ORDER BY
      *
-     * @access public
+     * @param   string $order_by
+     * @param   string $direction ASC, DESC or RANDOM
+     * @param   bool   $escape
      *
-     * @param    string $orderby
-     * @param    string $direction ASC, DESC or RANDOM
-     * @param    bool   $escape
-     *
-     * @return    object
+     * @access  public
+     * @return  object
      */
-    public function order_by( $orderby, $direction = '', $escape = NULL )
+    public function order_by( $order_by, $direction = '', $escape = NULL )
     {
         $direction = strtoupper( trim( $direction ) );
         if( $direction === 'RANDOM' )
         {
-            if( ! is_float( $orderby ) && ctype_digit( (string)$orderby ) )
+            if( ! is_float( $order_by ) && ctype_digit( (string)$order_by ) )
             {
-                $orderby = ( $orderby > 1 )
-                    ? (float)'0.' . $orderby
-                    : (float)$orderby;
+                $order_by = ( $order_by > 1 )
+                    ? (float)'0.' . $order_by
+                    : (float)$order_by;
             }
 
-            if( is_float( $orderby ) )
+            if( is_float( $order_by ) )
             {
-                $this->simple_query( 'SET SEED ' . $orderby );
+                $this->simple_query( 'SET SEED ' . $order_by );
             }
 
-            $orderby = $this->_random_keyword[ 0 ];
+            $order_by = $this->_random_keywords[ 0 ];
             $direction = '';
             $escape = FALSE;
         }
 
-        return parent::order_by( $orderby, $direction, $escape );
+        return parent::order_by( $order_by, $direction, $escape );
     }
 
     // --------------------------------------------------------------------
@@ -464,15 +451,14 @@ class Driver extends \O2System\O2DB
     /**
      * Set client character set
      *
-     * @access protected
+     * @param   string $charset
      *
-     * @param    string $charset
-     *
-     * @return    bool
+     * @access  protected
+     * @return  bool
      */
-    protected function _db_set_charset( $charset )
+    protected function _set_charset( $charset )
     {
-        return ( pg_set_client_encoding( $this->conn_id, $charset ) === 0 );
+        return ( pg_set_client_encoding( $this->id_connection, $charset ) === 0 );
     }
 
     // --------------------------------------------------------------------
@@ -480,15 +466,14 @@ class Driver extends \O2System\O2DB
     /**
      * Execute the query
      *
-     * @access protected
+     * @param   string $sql An SQL query
      *
-     * @param    string $sql an SQL query
-     *
-     * @return    resource
+     * @access  protected
+     * @return  resource
      */
     protected function _execute( $sql )
     {
-        return pg_query( $this->conn_id, $sql );
+        return pg_query( $this->id_connection, $sql );
     }
 
     // --------------------------------------------------------------------
@@ -496,15 +481,14 @@ class Driver extends \O2System\O2DB
     /**
      * Platform-dependant string escape
      *
-     * @access protected
+     * @param   string $string
      *
-     * @param    string
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
-    protected function _escape_str( $str )
+    protected function _escape_string( $string )
     {
-        return pg_escape_string( $this->conn_id, $str );
+        return pg_escape_string( $this->id_connection, $string );
     }
 
     // --------------------------------------------------------------------
@@ -514,21 +498,20 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific query string so that the table names can be fetched
      *
-     * @access protected
+     * @param   bool $prefix_limit
      *
-     * @param    bool $prefix_limit
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _list_tables( $prefix_limit = FALSE )
     {
         $sql = 'SELECT "table_name" FROM "information_schema"."tables" WHERE "table_schema" = \'' . $this->schema . "'";
 
-        if( $prefix_limit !== FALSE && $this->db_prefix !== '' )
+        if( $prefix_limit !== FALSE && $this->prefix_table !== '' )
         {
             return $sql . ' && "table_name" LIKE \''
-                   . $this->escape_like_str( $this->db_prefix ) . "%' "
-                   . sprintf( $this->_like_escape_str, $this->_like_escape_chr );
+                   . $this->escape_like_string( $this->prefix_table ) . "%' "
+                   . sprintf( $this->_like_escape_string, $this->_like_escape_character );
         }
 
         return $sql;
@@ -541,11 +524,10 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific query string so that the column names can be fetched
      *
-     * @access protected
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _list_columns( $table = '' )
     {
@@ -561,24 +543,23 @@ class Driver extends \O2System\O2DB
      *
      * Escapes data based on type
      *
-     * @access public
+     * @param    string $string
      *
-     * @param    string $str
-     *
-     * @return    mixed
+     * @access  public
+     * @return  mixed
      */
-    public function escape( $str )
+    public function escape( $string )
     {
-        if( is_php( '5.4.4' ) && ( is_string( $str ) OR ( is_object( $str ) && method_exists( $str, '__toString' ) ) ) )
+        if( is_php( '5.4.4' ) && ( is_string( $string ) OR ( is_object( $string ) && method_exists( $string, '__toString' ) ) ) )
         {
-            return pg_escape_literal( $this->conn_id, $str );
+            return pg_escape_literal( $this->id_connection, $string );
         }
-        elseif( is_bool( $str ) )
+        elseif( is_bool( $string ) )
         {
-            return ( $str ) ? 'TRUE' : 'FALSE';
+            return ( $string ) ? 'TRUE' : 'FALSE';
         }
 
-        return parent::escape( $str );
+        return parent::escape( $string );
     }
 
     // --------------------------------------------------------------------
@@ -588,17 +569,16 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific update string from the supplied data
      *
-     * @access protected
+     * @param   string $table
+     * @param   array  $values
      *
-     * @param    string $table
-     * @param    array  $values
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _update( $table, $values )
     {
-        $this->qb_limit = FALSE;
-        $this->qb_orderby = array();
+        $this->_limit = FALSE;
+        $this->_order_by = array();
 
         return parent::_update( $table, $values );
     }
@@ -610,13 +590,12 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific batch update string from the supplied data
      *
-     * @access protected
+     * @param   string $table Table name
+     * @param   array  $values Update data
+     * @param   string $index WHERE key
      *
-     * @param    string $table Table name
-     * @param    array  $values Update data
-     * @param    string $index WHERE key
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _update_batch( $table, $values, $index )
     {
@@ -644,7 +623,7 @@ class Driver extends \O2System\O2DB
 
         $this->where( $index . ' IN(' . implode( ',', $ids ) . ')', NULL, FALSE );
 
-        return 'UPDATE ' . $table . ' SET ' . substr( $cases, 0, -2 ) . $this->_compile_wh( 'qb_where' );
+        return 'UPDATE ' . $table . ' SET ' . substr( $cases, 0, -2 ) . $this->_compile_where( '_where' );
     }
 
     // --------------------------------------------------------------------
@@ -654,15 +633,14 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific delete string from the supplied data
      *
-     * @access protected
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _delete( $table )
     {
-        $this->qb_limit = FALSE;
+        $this->_limit = FALSE;
 
         return parent::_delete( $table );
     }
@@ -674,15 +652,14 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific LIMIT clause
      *
-     * @access protected
+     * @param   string $sql SQL Query
      *
-     * @param    string $sql SQL Query
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _limit( $sql )
     {
-        return $sql . ' LIMIT ' . $this->qb_limit . ( $this->qb_offset ? ' OFFSET ' . $this->qb_offset : '' );
+        return $sql . ' LIMIT ' . $this->_limit . ( $this->_offset ? ' OFFSET ' . $this->_offset : '' );
     }
 
     // --------------------------------------------------------------------
@@ -690,16 +667,12 @@ class Driver extends \O2System\O2DB
     /**
      * Close DB Connection
      *
-     * @access protected
-     *
-     * @return    void
+     * @access  protected
+     * @return  void
      */
     protected function _close()
     {
-        pg_close( $this->conn_id );
+        pg_close( $this->id_connection );
     }
 
 }
-
-/* End of file Driver.php */
-/* Location: ./o2system/libraries/database/drivers/Postgre/Driver.php */

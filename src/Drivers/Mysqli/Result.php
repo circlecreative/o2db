@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,49 +29,37 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
-// --------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 namespace O2System\O2DB\Drivers\Mysqli;
 
-use O2System\O2DB\Factory\Result as ResultFactory;
+// ------------------------------------------------------------------------
 
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
-
-// --------------------------------------------------------------------
+use O2System\O2DB\Interfaces\Result as ResultInterface;
 
 /**
- * Mysqli Database Adapter Class
+ * MySQLi Database Result
  *
- * Porting from CodeIgniter Database Mysqli Driver
- *
- * @package        O2System
- * @subpackage     Drivers
- * @category       Database
- * @author         EllisLab Dev Team
- *                 Circle Creative Dev Team
- * @link           http://o2system.center/wiki/#Database
+ * @author      Circle Creative Developer Team
  */
-class Result extends ResultFactory
+class Result extends ResultInterface
 {
-
     /**
      * Number of rows in the result set
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function num_rows()
     {
         return is_int( $this->num_rows )
             ? $this->num_rows
-            : $this->num_rows = $this->result_id->num_rows;
+            : $this->num_rows = $this->id_result->num_rows;
     }
 
     // --------------------------------------------------------------------
@@ -79,13 +67,12 @@ class Result extends ResultFactory
     /**
      * Number of fields in the result set
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function num_fields()
     {
-        return $this->result_id->field_count;
+        return $this->id_result->field_count;
     }
 
     // --------------------------------------------------------------------
@@ -95,15 +82,14 @@ class Result extends ResultFactory
      *
      * Generates an array of column names
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function list_fields()
     {
         $field_names = array();
-        $this->result_id->field_seek( 0 );
-        while( $field = $this->result_id->fetch_field() )
+        $this->id_result->field_seek( 0 );
+        while( $field = $this->id_result->fetch_field() )
         {
             $field_names[ ] = $field->name;
         }
@@ -118,25 +104,24 @@ class Result extends ResultFactory
      *
      * Generates an array of objects containing field meta-data
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function field_data()
     {
-        $retval = array();
-        $field_data = $this->result_id->fetch_fields();
+        $data = array();
+        $field_data = $this->id_result->fetch_fields();
         for( $i = 0, $c = count( $field_data ); $i < $c; $i++ )
         {
-            $retval[ $i ] = new \stdClass();
-            $retval[ $i ]->name = $field_data[ $i ]->name;
-            $retval[ $i ]->type = $field_data[ $i ]->type;
-            $retval[ $i ]->max_length = $field_data[ $i ]->max_length;
-            $retval[ $i ]->primary_key = (int)( $field_data[ $i ]->flags & 2 );
-            $retval[ $i ]->default = $field_data[ $i ]->def;
+            $data[ $i ] = new \stdClass();
+            $data[ $i ]->name = $field_data[ $i ]->name;
+            $data[ $i ]->type = $field_data[ $i ]->type;
+            $data[ $i ]->max_length = $field_data[ $i ]->max_length;
+            $data[ $i ]->primary_key = (int)( $field_data[ $i ]->flags & 2 );
+            $data[ $i ]->default = $field_data[ $i ]->def;
         }
 
-        return $retval;
+        return $data;
     }
 
     // --------------------------------------------------------------------
@@ -144,16 +129,15 @@ class Result extends ResultFactory
     /**
      * Free the result
      *
-     * @access public
-     *
-     * @return    void
+     * @access  public
+     * @return  void
      */
     public function free_result()
     {
-        if( is_object( $this->result_id ) )
+        if( is_object( $this->id_result ) )
         {
-            $this->result_id->free();
-            $this->result_id = FALSE;
+            $this->id_result->free();
+            $this->id_result = FALSE;
         }
     }
 
@@ -166,15 +150,14 @@ class Result extends ResultFactory
      * this internally before fetching results to make sure the
      * result set starts at zero.
      *
-     * @access public
+     * @param   int $n
      *
-     * @param    int $n
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function data_seek( $n = 0 )
     {
-        return $this->result_id->data_seek( $n );
+        return $this->id_result->data_seek( $n );
     }
 
     // --------------------------------------------------------------------
@@ -184,13 +167,12 @@ class Result extends ResultFactory
      *
      * Returns the result set as an array
      *
-     * @access protected
-     *
-     * @return    array
+     * @access  protected
+     * @return  array
      */
     protected function _fetch_assoc()
     {
-        return $this->result_id->fetch_assoc();
+        return $this->id_result->fetch_assoc();
     }
 
     // --------------------------------------------------------------------
@@ -200,18 +182,14 @@ class Result extends ResultFactory
      *
      * Returns the result set as an object
      *
-     * @access protected
+     * @param   string $class_name
      *
-     * @param    string $class_name
-     *
-     * @return    object
+     * @access  protected
+     * @return  object
      */
     protected function _fetch_object( $class_name = '\stdClass' )
     {
-        return $this->result_id->fetch_object( $class_name );
+        return $this->id_result->fetch_object( $class_name );
     }
 
 }
-
-/* End of file Result.php */
-/* Location: ./o2system/libraries/database/drivers/Mysqli/Result.php */

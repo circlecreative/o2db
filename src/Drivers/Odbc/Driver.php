@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,30 +29,30 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
-namespace O2System\O2DB\Drivers\ODBC;
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
+// ------------------------------------------------------------------------
 
+namespace O2System\O2DB\Drivers\Odbc;
 
-class Driver extends \O2System\O2DB
+// ------------------------------------------------------------------------
+
+use O2System\O2DB\Interfaces\Driver as DriverInterface;
+
+/**
+ * ODBC (Unified) Database Driver
+ *
+ * @author      Circle Creative Developer Team
+ */
+class Driver extends DriverInterface
 {
-
-    /**
-     * Database driver
-     *
-     * @var    string
-     */
-    public $dbdriver = 'odbc';
-
     /**
      * Database schema
      *
-     * @var    string
+     * @type    string
      */
     public $schema = 'public';
 
@@ -63,21 +63,21 @@ class Driver extends \O2System\O2DB
      *
      * Must be empty for ODBC.
      *
-     * @var    string
+     * @type    string
      */
-    protected $_escape_char = '';
+    protected $_escape_character = '';
 
     /**
      * ESCAPE statement string
      *
-     * @var    string
+     * @type    string
      */
-    protected $_like_escape_str = " {escape '%s'} ";
+    protected $_like_escape_string = " {escape '%s'} ";
 
     /**
      * ORDER BY random keyword
      *
-     * @var    array
+     * @type    array
      */
     protected $_random_keyword = array( 'RND()', 'RND(%d)' );
 
@@ -86,11 +86,9 @@ class Driver extends \O2System\O2DB
     /**
      * Class constructor
      *
-     * @access public
+     * @param   array $params
      *
-     * @param    array $params
-     *
-     * @return    void
+     * @access  public
      */
     public function __construct( $params )
     {
@@ -108,13 +106,12 @@ class Driver extends \O2System\O2DB
     /**
      * Non-persistent database connection
      *
-     * @access public
+     * @param   bool $persistent
      *
-     * @param    bool $persistent
-     *
-     * @return    resource
+     * @access  public
+     * @return  resource
      */
-    public function db_connect( $persistent = FALSE )
+    public function connect( $persistent = FALSE )
     {
         return ( $persistent === TRUE )
             ? odbc_pconnect( $this->dsn, $this->username, $this->password )
@@ -126,11 +123,10 @@ class Driver extends \O2System\O2DB
     /**
      * Begin Transaction
      *
-     * @access public
+     * @param   bool $test_mode
      *
-     * @param    bool $test_mode
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_begin( $test_mode = FALSE )
     {
@@ -145,7 +141,7 @@ class Driver extends \O2System\O2DB
         // even if the queries produce a successful result.
         $this->_trans_failure = ( $test_mode === TRUE );
 
-        return odbc_autocommit( $this->conn_id, FALSE );
+        return odbc_autocommit( $this->id_connection, FALSE );
     }
 
     // --------------------------------------------------------------------
@@ -153,9 +149,8 @@ class Driver extends \O2System\O2DB
     /**
      * Commit Transaction
      *
-     * @access public
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_commit()
     {
@@ -165,10 +160,10 @@ class Driver extends \O2System\O2DB
             return TRUE;
         }
 
-        $ret = odbc_commit( $this->conn_id );
-        odbc_autocommit( $this->conn_id, TRUE );
+        $return = odbc_commit( $this->id_connection );
+        odbc_autocommit( $this->id_connection, TRUE );
 
-        return $ret;
+        return $return;
     }
 
     // --------------------------------------------------------------------
@@ -176,9 +171,8 @@ class Driver extends \O2System\O2DB
     /**
      * Rollback Transaction
      *
-     * @access public
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_rollback()
     {
@@ -188,10 +182,10 @@ class Driver extends \O2System\O2DB
             return TRUE;
         }
 
-        $ret = odbc_rollback( $this->conn_id );
-        odbc_autocommit( $this->conn_id, TRUE );
+        $return = odbc_rollback( $this->id_connection );
+        odbc_autocommit( $this->id_connection, TRUE );
 
-        return $ret;
+        return $return;
     }
 
     // --------------------------------------------------------------------
@@ -199,13 +193,12 @@ class Driver extends \O2System\O2DB
     /**
      * Affected Rows
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function affected_rows()
     {
-        return odbc_num_rows( $this->result_id );
+        return odbc_num_rows( $this->id_result );
     }
 
     // --------------------------------------------------------------------
@@ -213,13 +206,18 @@ class Driver extends \O2System\O2DB
     /**
      * Insert ID
      *
-     * @access public
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
+     * @throws  \Exception
      */
     public function insert_id()
     {
-        return ( $this->db->db_debug ) ? $this->db->display_error( 'db_unsupported_feature' ) : FALSE;
+        if( $this->debug_enabled )
+        {
+            throw new \Exception( 'Unsupported feature of the database platform you are using.' );
+        }
+
+        return FALSE;
     }
 
     // --------------------------------------------------------------------
@@ -230,13 +228,14 @@ class Driver extends \O2System\O2DB
      * Returns an array containing code and message of the last
      * database error that has occured.
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function error()
     {
-        return array( 'code' => odbc_error( $this->conn_id ), 'message' => odbc_errormsg( $this->conn_id ) );
+        return array(
+            'code' => odbc_error( $this->id_connection ), 'message' => odbc_errormsg( $this->id_connection )
+        );
     }
 
     // --------------------------------------------------------------------
@@ -244,15 +243,14 @@ class Driver extends \O2System\O2DB
     /**
      * Execute the query
      *
-     * @access protected
+     * @param   string $sql an SQL query
      *
-     * @param    string $sql an SQL query
-     *
-     * @return    resource
+     * @access  protected
+     * @return  resource
      */
     protected function _execute( $sql )
     {
-        return odbc_exec( $this->conn_id, $sql );
+        return odbc_exec( $this->id_connection, $sql );
     }
 
     // --------------------------------------------------------------------
@@ -260,15 +258,14 @@ class Driver extends \O2System\O2DB
     /**
      * Platform-dependant string escape
      *
-     * @access protected
+     * @param   string $string
      *
-     * @param    string
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
-    protected function _escape_str( $str )
+    protected function _escape_string( $string )
     {
-        return remove_invisible_characters( $str );
+        return remove_invisible_characters( $string );
     }
 
     // --------------------------------------------------------------------
@@ -278,20 +275,19 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific query string so that the table names can be fetched
      *
-     * @access protected
+     * @param   bool $prefix_limit
      *
-     * @param    bool $prefix_limit
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _list_tables( $prefix_limit = FALSE )
     {
         $sql = "SELECT table_name FROM information_schema.tables WHERE table_schema = '" . $this->schema . "'";
 
-        if( $prefix_limit !== FALSE && $this->db_prefix !== '' )
+        if( $prefix_limit !== FALSE && $this->prefix_table !== '' )
         {
-            return $sql . " && table_name LIKE '" . $this->escape_like_str( $this->db_prefix ) . "%' "
-                   . sprintf( $this->_like_escape_str, $this->_like_escape_chr );
+            return $sql . " && table_name LIKE '" . $this->escape_like_string( $this->prefix_table ) . "%' "
+                   . sprintf( $this->_like_escape_string, $this->_like_escape_character );
         }
 
         return $sql;
@@ -304,11 +300,10 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific query string so that the column names can be fetched
      *
-     * @access protected
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _list_columns( $table = '' )
     {
@@ -322,11 +317,10 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific query so that the column data can be retrieved
      *
-     * @access protected
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _field_data( $table )
     {
@@ -340,17 +334,16 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific update string from the supplied data
      *
-     * @access protected
+     * @param   string $table
+     * @param   array  $values
      *
-     * @param    string $table
-     * @param    array  $values
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _update( $table, $values )
     {
-        $this->qb_limit = FALSE;
-        $this->qb_orderby = array();
+        $this->_limit = FALSE;
+        $this->_order_by = array();
 
         return parent::_update( $table, $values );
     }
@@ -365,11 +358,10 @@ class Driver extends \O2System\O2DB
      * If the database does not support the TRUNCATE statement,
      * then this method maps to 'DELETE FROM table'
      *
-     * @access protected
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _truncate( $table )
     {
@@ -383,15 +375,14 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific delete string from the supplied data
      *
-     * @access protected
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _delete( $table )
     {
-        $this->qb_limit = FALSE;
+        $this->_limit = FALSE;
 
         return parent::_delete( $table );
     }
@@ -401,16 +392,12 @@ class Driver extends \O2System\O2DB
     /**
      * Close DB Connection
      *
-     * @access protected
-     *
-     * @return    void
+     * @access  protected
+     * @return  void
      */
     protected function _close()
     {
-        odbc_close( $this->conn_id );
+        odbc_close( $this->id_connection );
     }
 
 }
-
-/* End of file Driver.php */
-/* Location: ./o2system/libraries/database/drivers/ODBC/Driver.php */

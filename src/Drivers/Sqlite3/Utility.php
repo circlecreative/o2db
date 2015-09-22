@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,35 +29,38 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
-namespace O2System\O2DB\Drivers\SQLite3;
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
+// ------------------------------------------------------------------------
 
+namespace O2System\O2DB\Drivers\Sqlite3;
 
-class Utility extends \O2System\O2DB\Interfaces\Utility
+// ------------------------------------------------------------------------
+
+use O2System\O2DB\Interfaces\Utility as UtilityInterface;
+
+/**
+ * SQLite3 Database Utility
+ *
+ * @author      Circle Creative Developer Team
+ */
+class Utility extends UtilityInterface
 {
-
     /**
      * Export
      *
-     * @access protected
+     * @param   array   $params Preferences
      *
-     * @param    array $params Preferences
-     *
-     * @return    mixed
+     * @access  protected
+     * @return  mixed
+     * @throws  \Exception
      */
     protected function _backup( $params = array() )
     {
-        // Not supported
-        return $this->db->display_error( 'db_unsupported_feature' );
+        throw new \Exception('Unsupported feature of the database platform you are using.');
     }
 
 }
-
-/* End of file Utility.php */
-/* Location: ./o2system/libraries/database/drivers/SQLite3/Utility.php */

@@ -41,8 +41,6 @@ namespace O2System\O2DB\Interfaces;
 
 // ------------------------------------------------------------------------
 
-use O2System\Core\Gears\Logger;
-
 /**
  * Query Builder Class
  *
@@ -58,7 +56,7 @@ use O2System\Core\Gears\Logger;
  *
  * @todo           Having with Math Operator
  */
-abstract class Query extends Driver
+abstract class Query
 {
     private static $_operators      = array(
         'equal'         => '=',
@@ -76,207 +74,207 @@ abstract class Query extends Driver
     /**
      * Return DELETE SQL flag
      *
-     * @var    bool
+     * @type    bool
      */
     protected $return_delete_sql = FALSE;
 
     /**
      * Reset DELETE data flag
      *
-     * @var    bool
+     * @type    bool
      */
     protected $reset_delete_data = FALSE;
 
     /**
      * QB SELECT data
      *
-     * @var    array
+     * @type    array
      */
-    protected $qb_select = array();
+    protected $_select = array();
 
     /**
      * QB DISTINCT flag
      *
-     * @var    bool
+     * @type    bool
      */
-    protected $qb_distinct = FALSE;
+    protected $_distinct = FALSE;
 
     /**
      * QB FROM data
      *
-     * @var    array
+     * @type    array
      */
-    protected $qb_from = array();
+    protected $_from = array();
 
     /**
      * QB JOIN data
      *
-     * @var    array
+     * @type    array
      */
-    protected $qb_join = array();
+    protected $_join = array();
 
     /**
      * QB WHERE data
      *
-     * @var    array
+     * @type    array
      */
-    protected $qb_where = array();
+    protected $_where = array();
 
     /**
      * QB GROUP BY data
      *
-     * @var    array
+     * @type    array
      */
-    protected $qb_groupby = array();
+    protected $_group_by = array();
 
     /**
      * QB HAVING data
      *
-     * @var    array
+     * @type    array
      */
-    protected $qb_having = array();
+    protected $_having = array();
 
     /**
      * QB keys
      *
-     * @var    array
+     * @type    array
      */
-    protected $qb_keys = array();
+    protected $_keys = array();
 
     /**
      * QB LIMIT data
      *
-     * @var    int
+     * @type    int
      */
-    protected $qb_limit = FALSE;
+    protected $_limit = FALSE;
 
     /**
      * QB OFFSET data
      *
-     * @var    int
+     * @type    int
      */
-    protected $qb_offset = FALSE;
+    protected $_offset = FALSE;
 
     /**
      * QB ORDER BY data
      *
-     * @var    array
+     * @type    array
      */
-    protected $qb_orderby = array();
+    protected $_order_by = array();
 
     /**
      * QB data sets
      *
-     * @var    array
+     * @type    array
      */
-    protected $qb_set = array();
+    protected $_sets = array();
 
     /**
      * QB aliased tables list
      *
-     * @var    array
+     * @type    array
      */
-    protected $qb_aliased_tables = array();
+    protected $_aliased_tables = array();
+
+    /**
+     * QB No Escape data
+     *
+     * @type    array
+     */
+    protected $_no_escape = array();
 
     /**
      * QB WHERE group started flag
      *
-     * @var    bool
+     * @type    bool
      */
-    protected $qb_where_group_started = FALSE;
+    protected $_where_group_started = FALSE;
 
     /**
      * QB WHERE group count
      *
-     * @var    int
+     * @type    int
      */
-    protected $qb_where_group_count = 0;
+    protected $_where_group_count = 0;
 
     // Query Builder Caching variables
 
     /**
      * QB Caching flag
      *
-     * @var    bool
+     * @type    bool
      */
-    protected $qb_caching = FALSE;
+    protected $_caching = FALSE;
 
     /**
      * QB Cache exists list
      *
-     * @var    array
+     * @type    array
      */
-    protected $qb_cache_exists = array();
+    protected $_cache_exists = array();
 
     /**
      * QB Cache SELECT data
      *
-     * @var    array
+     * @type    array
      */
-    protected $qb_cache_select = array();
+    protected $_cache_select = array();
 
     /**
      * QB Cache FROM data
      *
-     * @var    array
+     * @type    array
      */
-    protected $qb_cache_from = array();
+    protected $_cache_from = array();
 
     /**
      * QB Cache JOIN data
      *
-     * @var    array
+     * @type    array
      */
-    protected $qb_cache_join = array();
+    protected $_cache_join = array();
 
     /**
      * QB Cache WHERE data
      *
-     * @var    array
+     * @type    array
      */
-    protected $qb_cache_where = array();
+    protected $_cache_where = array();
 
     /**
      * QB Cache GROUP BY data
      *
-     * @var    array
+     * @type    array
      */
-    protected $qb_cache_groupby = array();
+    protected $_cache_group_by = array();
 
     /**
      * QB Cache HAVING data
      *
-     * @var    array
+     * @type    array
      */
-    protected $qb_cache_having = array();
+    protected $_cache_having = array();
 
     /**
      * QB Cache ORDER BY data
      *
-     * @var    array
+     * @type    array
      */
-    protected $qb_cache_orderby = array();
+    protected $_cache_order_by = array();
 
     /**
      * QB Cache data sets
      *
-     * @var    array
+     * @type    array
      */
-    protected $qb_cache_set = array();
-
-    /**
-     * QB No Escape data
-     *
-     * @var    array
-     */
-    protected $qb_no_escape = array();
+    protected $_cache_sets = array();
 
     /**
      * QB Cache No Escape data
      *
-     * @var    array
+     * @type    array
      */
-    protected $qb_cache_no_escape = array();
+    protected $_cache_no_escape = array();
 
     // --------------------------------------------------------------------
 
@@ -285,10 +283,10 @@ abstract class Query extends Driver
      *
      * Generates the SELECT portion of the query
      *
-     * @param    string
-     * @param    mixed
+     * @param   string  $select
+     * @param   mixed   $escape
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return  \O2System\O2DB\Interfaces\Query
      */
     public function select( $select = '*', $escape = NULL )
     {
@@ -306,14 +304,14 @@ abstract class Query extends Driver
 
             if( $val !== '' )
             {
-                $this->qb_select[ ] = $val;
-                $this->qb_no_escape[ ] = $escape;
+                $this->_select[ ] = $val;
+                $this->_no_escape[ ] = $escape;
 
-                if( $this->qb_caching === TRUE )
+                if( $this->_caching === TRUE )
                 {
-                    $this->qb_cache_select[ ] = $val;
-                    $this->qb_cache_exists[ ] = 'select';
-                    $this->qb_cache_no_escape[ ] = $escape;
+                    $this->_cache_select[ ] = $val;
+                    $this->_cache_exists[ ] = 'select';
+                    $this->_cache_no_escape[ ] = $escape;
                 }
             }
         }
@@ -328,10 +326,10 @@ abstract class Query extends Driver
      *
      * Generates a SELECT MAX(field) portion of a query
      *
-     * @param    string    the field
-     * @param    string    an alias
+     * @param   string  $select the field
+     * @param   string  $alias  an alias
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return  \O2System\O2DB\Interfaces\Query
      */
     public function select_max( $select = '', $alias = '' )
     {
@@ -343,30 +341,30 @@ abstract class Query extends Driver
     /**
      * SELECT [MAX|MIN|AVG|SUM]()
      *
-     * @used-by    select_max()
-     * @used-by    select_min()
-     * @used-by    select_avg()
-     * @used-by    select_sum()
+     * @used-by select_max()
+     * @used-by select_min()
+     * @used-by select_avg()
+     * @used-by select_sum()
      *
-     * @param    string $select Field name
-     * @param    string $alias
-     * @param    string $type
+     * @param   string  $select Field name
+     * @param   string  $alias
+     * @param   string  $type
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return  \O2System\O2DB\Interfaces\Query
+     * @throws  \Exception
      */
     protected function _max_min_avg_sum( $select = '', $alias = '', $type = 'MAX' )
     {
         if( ! is_string( $select ) OR $select === '' )
         {
-            $this->display_error( 'db_invalid_query' );
+            throw new \Exception( 'The query you submitted is not valid.' );
         }
 
         $type = strtoupper( $type );
 
         if( ! in_array( $type, array( 'MAX', 'MIN', 'AVG', 'SUM' ) ) )
         {
-            Exception::show( 'Invalid function type: ' . $type );
-            //show_error( 'Invalid function type: ' . $type );
+            throw new \Exception( 'Invalid function type: ' . $type );
         }
 
         if( $alias === '' )
@@ -376,13 +374,13 @@ abstract class Query extends Driver
 
         $sql = $type . '(' . $this->protect_identifiers( trim( $select ) ) . ') AS ' . $this->escape_identifiers( trim( $alias ) );
 
-        $this->qb_select[ ] = $sql;
-        $this->qb_no_escape[ ] = NULL;
+        $this->_select[ ] = $sql;
+        $this->_no_escape[ ] = NULL;
 
-        if( $this->qb_caching === TRUE )
+        if( $this->_caching === TRUE )
         {
-            $this->qb_cache_select[ ] = $sql;
-            $this->qb_cache_exists[ ] = 'select';
+            $this->_cache_select[ ] = $sql;
+            $this->_cache_exists[ ] = 'select';
         }
 
         return $this;
@@ -419,7 +417,7 @@ abstract class Query extends Driver
      * @param    string    the field
      * @param    string    an alias
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function select_min( $select = '', $alias = '' )
     {
@@ -436,7 +434,7 @@ abstract class Query extends Driver
      * @param    string    the field
      * @param    string    an alias
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function select_avg( $select = '', $alias = '' )
     {
@@ -453,7 +451,7 @@ abstract class Query extends Driver
      * @param    string    the field
      * @param    string    an alias
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function select_sum( $select = '', $alias = '' )
     {
@@ -467,13 +465,13 @@ abstract class Query extends Driver
      *
      * Sets a flag which tells the query string compiler to add DISTINCT
      *
-     * @param    bool $val
+     * @param    bool $value
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
-    public function distinct( $val = TRUE )
+    public function distinct( $value = TRUE )
     {
-        $this->qb_distinct = is_bool( $val ) ? $val : TRUE;
+        $this->_distinct = is_bool( $value ) ? $value : TRUE;
 
         return $this;
     }
@@ -490,7 +488,7 @@ abstract class Query extends Driver
      * @param    string    the type of join
      * @param    string    whether not to try to escape identifiers
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function join( $tables, $condition = '', $type = '', $escape = NULL )
     {
@@ -541,7 +539,7 @@ abstract class Query extends Driver
             // Split multiple conditions
             if( $escape === TRUE && preg_match_all( '/\sAND\s|\sOR\s/i', $condition, $m, PREG_OFFSET_CAPTURE ) )
             {
-                $newcond = '';
+                $new_condition = '';
                 $m[ 0 ][ ] = array( '', strlen( $condition ) );
 
                 for( $i = 0, $c = count( $m[ 0 ] ), $s = 0;
@@ -550,14 +548,14 @@ abstract class Query extends Driver
                 {
                     $temp = substr( $condition, $s, ( $m[ 0 ][ $i ][ 1 ] - $s ) );
 
-                    $newcond .= preg_match( "/([\[\]\w\.'-]+)(\s*[^\"\[`'\w]+\s*)(.+)/i", $temp, $match )
+                    $new_condition .= preg_match( "/([\[\]\w\.'-]+)(\s*[^\"\[`'\w]+\s*)(.+)/i", $temp, $match )
                         ? $this->protect_identifiers( $match[ 1 ] ) . $match[ 2 ] . $this->protect_identifiers( $match[ 3 ] )
                         : $temp;
 
-                    $newcond .= $m[ 0 ][ $i ][ 0 ];
+                    $new_condition .= $m[ 0 ][ $i ][ 0 ];
                 }
 
-                $condition = ' ON ' . $newcond;
+                $condition = ' ON ' . $new_condition;
             }
             // Split apart the condition and protect the identifiers
             elseif( $escape === TRUE && preg_match( "/([\[\]\w\.'-]+)(\s*[^\"\[`'\w]+\s*)(.+)/i", $condition,
@@ -582,12 +580,12 @@ abstract class Query extends Driver
             }
 
             // Assemble the JOIN statement
-            $this->qb_join[ ] = $join = $type . 'JOIN ' . $tables . $condition;
+            $this->_join[ ] = $join = $type . 'JOIN ' . $tables . $condition;
 
-            if( $this->qb_caching === TRUE )
+            if( $this->_caching === TRUE )
             {
-                $this->qb_cache_join[ ] = $join;
-                $this->qb_cache_exists[ ] = 'join';
+                $this->_cache_join[ ] = $join;
+                $this->_cache_exists[ ] = 'join';
             }
 
             return $this;
@@ -601,9 +599,9 @@ abstract class Query extends Driver
      *
      * Used to track SQL statements written with aliased tables.
      *
-     * @param    string    The table to inspect
+     * @param   string $table  The table to inspect
      *
-     * @return    string
+     * @return  string
      */
     protected function _track_aliases( $table )
     {
@@ -634,9 +632,9 @@ abstract class Query extends Driver
             $table = trim( strrchr( $table, ' ' ) );
 
             // Store the alias, if it doesn't already exist
-            if( ! in_array( $table, $this->qb_aliased_tables ) )
+            if( ! in_array( $table, $this->_aliased_tables ) )
             {
-                $this->qb_aliased_tables[ ] = $table;
+                $this->_aliased_tables[ ] = $table;
             }
         }
     }
@@ -653,11 +651,11 @@ abstract class Query extends Driver
      * @param    mixed
      * @param    bool
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function or_where( $key, $value = NULL, $escape = NULL )
     {
-        return $this->_wh( 'qb_where', $key, $value, 'OR ', $escape );
+        return $this->_wh( '_where', $key, $value, 'OR ', $escape );
     }
 
     // --------------------------------------------------------------------
@@ -670,17 +668,17 @@ abstract class Query extends Driver
      * @used-by    having()
      * @used-by    or_having()
      *
-     * @param    string $qb_key 'qb_where' or 'qb_having'
+     * @param    string $property '_where' or '_having'
      * @param    mixed  $key
      * @param    mixed  $value
      * @param    string $type
      * @param    bool   $escape
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
-    protected function _wh( $qb_key, $key, $value = NULL, $type = 'AND ', $escape = NULL )
+    protected function _wh( $property, $key, $value = NULL, $type = 'AND ', $escape = NULL )
     {
-        $qb_cache_key = ( $qb_key === 'qb_having' ) ? 'qb_cache_having' : 'qb_cache_where';
+        $_cache_key = ( $property === '_having' ) ? '_cache_having' : '_cache_where';
 
         if( ! is_array( $key ) )
         {
@@ -702,7 +700,7 @@ abstract class Query extends Driver
                 $k = $k . ' ' . $op;
             }
 
-            $prefix = ( count( $this->$qb_key ) === 0 && count( $this->$qb_cache_key ) === 0 )
+            $prefix = ( count( $this->$property ) === 0 && count( $this->$_cache_key ) === 0 )
                 ? $this->_group_get_type( '' )
                 : $this->_group_get_type( $type );
 
@@ -728,11 +726,11 @@ abstract class Query extends Driver
                 $k = substr( $k, 0, $match[ 0 ][ 1 ] ) . ( $match[ 1 ][ 0 ] === '=' ? ' IS NULL' : ' IS NOT NULL' );
             }
 
-            $this->{$qb_key}[ ] = array( 'condition' => $prefix . $k . $v, 'escape' => $escape );
-            if( $this->qb_caching === TRUE )
+            $this->{$property}[ ] = array( 'condition' => $prefix . $k . $v, 'escape' => $escape );
+            if( $this->_caching === TRUE )
             {
-                $this->{$qb_cache_key}[ ] = array( 'condition' => $prefix . $k . $v, 'escape' => $escape );
-                $this->qb_cache_exists[ ] = substr( $qb_key, 3 );
+                $this->{$_cache_key}[ ] = array( 'condition' => $prefix . $k . $v, 'escape' => $escape );
+                $this->_cache_exists[ ] = substr( $property, 3 );
             }
 
         }
@@ -756,10 +754,10 @@ abstract class Query extends Driver
      */
     protected function _group_get_type( $type )
     {
-        if( $this->qb_where_group_started )
+        if( $this->_where_group_started )
         {
             $type = '';
-            $this->qb_where_group_started = FALSE;
+            $this->_where_group_started = FALSE;
         }
 
         return $type;
@@ -777,7 +775,7 @@ abstract class Query extends Driver
      * @param    array  $values The values searched on
      * @param    bool   $escape
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function where_in( $key = NULL, $values = NULL, $escape = NULL )
     {
@@ -794,17 +792,17 @@ abstract class Query extends Driver
      * @used-by    where_not_in()
      * @used-by    or_where_not_in()
      *
-     * @param    string $key    The field to search
+     * @param    string $field    The field to search
      * @param    array  $values The values searched on
      * @param    bool   $not    If the statement would be IN or NOT IN
      * @param    string $type
      * @param    bool   $escape
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
-    protected function _where_in( $key = NULL, $values = NULL, $not = FALSE, $type = 'AND ', $escape = NULL )
+    protected function _where_in( $field = NULL, $values = NULL, $not = FALSE, $type = 'AND ', $escape = NULL )
     {
-        if( $key === NULL OR $values === NULL )
+        if( $field === NULL OR $values === NULL )
         {
             return $this;
         }
@@ -824,17 +822,17 @@ abstract class Query extends Driver
             $where_in[ ] = $this->escape( $value );
         }
 
-        $prefix = ( count( $this->qb_where ) === 0 ) ? $this->_group_get_type( '' ) : $this->_group_get_type( $type );
+        $prefix = ( count( $this->_where ) === 0 ) ? $this->_group_get_type( '' ) : $this->_group_get_type( $type );
         $where_in = array(
-            'condition' => $prefix . $key . $not . ' IN(' . implode( ', ', $where_in ) . ')',
+            'condition' => $prefix . $field . $not . ' IN(' . implode( ', ', $where_in ) . ')',
             'escape'    => $escape
         );
 
-        $this->qb_where[ ] = $where_in;
-        if( $this->qb_caching === TRUE )
+        $this->_where[ ] = $where_in;
+        if( $this->_caching === TRUE )
         {
-            $this->qb_cache_where[ ] = $where_in;
-            $this->qb_cache_exists[ ] = 'where';
+            $this->_cache_where[ ] = $where_in;
+            $this->_cache_exists[ ] = 'where';
         }
 
         return $this;
@@ -848,15 +846,15 @@ abstract class Query extends Driver
      * Generates a WHERE field IN('item', 'item') SQL query,
      * joined with 'OR' if appropriate.
      *
-     * @param    string $key    The field to search
+     * @param    string $field    The field to search
      * @param    array  $values The values searched on
      * @param    bool   $escape
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
-    public function or_where_in( $key = NULL, $values = NULL, $escape = NULL )
+    public function or_where_in( $field = NULL, $values = NULL, $escape = NULL )
     {
-        return $this->_where_in( $key, $values, FALSE, 'OR ', $escape );
+        return $this->_where_in( $field, $values, FALSE, 'OR ', $escape );
     }
 
     // --------------------------------------------------------------------
@@ -871,7 +869,7 @@ abstract class Query extends Driver
      * @param    array  $values The values searched on
      * @param    bool   $escape
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function where_not_in( $key = NULL, $values = NULL, $escape = NULL )
     {
@@ -890,7 +888,7 @@ abstract class Query extends Driver
      * @param    array  $values The values searched on
      * @param    bool   $escape
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function or_where_not_in( $key = NULL, $values = NULL, $escape = NULL )
     {
@@ -910,7 +908,7 @@ abstract class Query extends Driver
      * @param    string $side
      * @param    bool   $escape
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function like( $field, $match = '', $side = 'both', $escape = NULL )
     {
@@ -934,7 +932,7 @@ abstract class Query extends Driver
      * @param    string $not
      * @param    bool   $escape
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     protected function _like( $field, $match = '', $type = 'AND ', $side = 'both', $not = '', $escape = NULL )
     {
@@ -945,41 +943,41 @@ abstract class Query extends Driver
 
         is_bool( $escape ) OR $escape = $this->_protect_identifiers;
 
-        foreach( $field as $k => $v )
+        foreach( $field as $key => $value )
         {
-            $prefix = ( count( $this->qb_where ) === 0 && count( $this->qb_cache_where ) === 0 )
+            $prefix = ( count( $this->_where ) === 0 && count( $this->_cache_where ) === 0 )
                 ? $this->_group_get_type( '' ) : $this->_group_get_type( $type );
 
-            $v = $this->escape_like_str( $v );
+            $value = $this->escape_like_string( $value );
 
             if( $side === 'none' )
             {
-                $like_statement = "{$prefix} {$k} {$not} LIKE '{$v}'";
+                $like_statement = "{$prefix} {$key} {$not} LIKE '{$value}'";
             }
             elseif( $side === 'before' )
             {
-                $like_statement = "{$prefix} {$k} {$not} LIKE '%{$v}'";
+                $like_statement = "{$prefix} {$key} {$not} LIKE '%{$value}'";
             }
             elseif( $side === 'after' )
             {
-                $like_statement = "{$prefix} {$k} {$not} LIKE '{$v}%'";
+                $like_statement = "{$prefix} {$key} {$not} LIKE '{$value}%'";
             }
             else
             {
-                $like_statement = "{$prefix} {$k} {$not} LIKE '%{$v}%'";
+                $like_statement = "{$prefix} {$key} {$not} LIKE '%{$value}%'";
             }
 
             // some platforms require an escape sequence definition for LIKE wildcards
-            if( $this->_like_escape_str !== '' )
+            if( $this->_like_escape_string !== '' )
             {
-                $like_statement .= sprintf( $this->_like_escape_str, $this->_like_escape_chr );
+                $like_statement .= sprintf( $this->_like_escape_string, $this->_like_escape_character );
             }
 
-            $this->qb_where[ ] = array( 'condition' => $like_statement, 'escape' => $escape );
-            if( $this->qb_caching === TRUE )
+            $this->_where[ ] = array( 'condition' => $like_statement, 'escape' => $escape );
+            if( $this->_caching === TRUE )
             {
-                $this->qb_cache_where[ ] = array( 'condition' => $like_statement, 'escape' => $escape );
-                $this->qb_cache_exists[ ] = 'where';
+                $this->_cache_where[ ] = array( 'condition' => $like_statement, 'escape' => $escape );
+                $this->_cache_exists[ ] = 'where';
             }
         }
 
@@ -999,7 +997,7 @@ abstract class Query extends Driver
      * @param    string $side
      * @param    bool   $escape
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function not_like( $field, $match = '', $side = 'both', $escape = NULL )
     {
@@ -1019,7 +1017,7 @@ abstract class Query extends Driver
      * @param    string $side
      * @param    bool   $escape
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function or_like( $field, $match = '', $side = 'both', $escape = NULL )
     {
@@ -1039,7 +1037,7 @@ abstract class Query extends Driver
      * @param    string $side
      * @param    bool   $escape
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function or_not_like( $field, $match = '', $side = 'both', $escape = NULL )
     {
@@ -1051,7 +1049,7 @@ abstract class Query extends Driver
     /**
      * Starts a query group, but ORs the group
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function or_group_start()
     {
@@ -1066,23 +1064,23 @@ abstract class Query extends Driver
      * @param    string $not  (Internal use only)
      * @param    string $type (Internal use only)
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function group_start( $not = '', $type = 'AND ' )
     {
         $type = $this->_group_get_type( $type );
 
-        $this->qb_where_group_started = TRUE;
-        $prefix = ( count( $this->qb_where ) === 0 && count( $this->qb_cache_where ) === 0 ) ? '' : $type;
+        $this->_where_group_started = TRUE;
+        $prefix = ( count( $this->_where ) === 0 && count( $this->_cache_where ) === 0 ) ? '' : $type;
         $where = array(
-            'condition' => $prefix . $not . str_repeat( ' ', ++$this->qb_where_group_count ) . ' (',
+            'condition' => $prefix . $not . str_repeat( ' ', ++$this->_where_group_count ) . ' (',
             'escape'    => FALSE
         );
 
-        $this->qb_where[ ] = $where;
-        if( $this->qb_caching )
+        $this->_where[ ] = $where;
+        if( $this->_caching )
         {
-            $this->qb_cache_where[ ] = $where;
+            $this->_cache_where[ ] = $where;
         }
 
         return $this;
@@ -1093,7 +1091,7 @@ abstract class Query extends Driver
     /**
      * Starts a query group, but NOTs the group
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function not_group_start()
     {
@@ -1105,7 +1103,7 @@ abstract class Query extends Driver
     /**
      * Starts a query group, but OR NOTs the group
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function or_not_group_start()
     {
@@ -1117,20 +1115,20 @@ abstract class Query extends Driver
     /**
      * Ends a query group
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function group_end()
     {
-        $this->qb_where_group_started = FALSE;
+        $this->_where_group_started = FALSE;
         $where = array(
-            'condition' => str_repeat( ' ', $this->qb_where_group_count-- ) . ')',
+            'condition' => str_repeat( ' ', $this->_where_group_count-- ) . ')',
             'escape'    => FALSE
         );
 
-        $this->qb_where[ ] = $where;
-        if( $this->qb_caching )
+        $this->_where[ ] = $where;
+        if( $this->_caching )
         {
-            $this->qb_cache_where[ ] = $where;
+            $this->_cache_where[ ] = $where;
         }
 
         return $this;
@@ -1141,35 +1139,35 @@ abstract class Query extends Driver
     /**
      * GROUP BY
      *
-     * @param    string $by
-     * @param    bool   $escape
+     * @param    string|array   $fields
+     * @param    bool           $escape
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
-    public function group_by( $by, $escape = NULL )
+    public function group_by( $fields, $escape = NULL )
     {
         is_bool( $escape ) OR $escape = $this->_protect_identifiers;
 
-        if( is_string( $by ) )
+        if( is_string( $fields ) )
         {
-            $by = ( $escape === TRUE )
-                ? explode( ',', $by )
-                : array( $by );
+            $fields = ( $escape === TRUE )
+                ? explode( ',', $fields )
+                : array( $fields );
         }
 
-        foreach( $by as $val )
+        foreach( $fields as $field )
         {
-            $val = trim( $val );
+            $field = trim( $field );
 
-            if( $val !== '' )
+            if( $field !== '' )
             {
-                $val = array( 'field' => $val, 'escape' => $escape );
+                $field = array( 'field' => $field, 'escape' => $escape );
 
-                $this->qb_groupby[ ] = $val;
-                if( $this->qb_caching === TRUE )
+                $this->_group_by[ ] = $field;
+                if( $this->_caching === TRUE )
                 {
-                    $this->qb_cache_groupby[ ] = $val;
-                    $this->qb_cache_exists[ ] = 'groupby';
+                    $this->_cache_group_by[ ] = $field;
+                    $this->_cache_exists[ ] = 'group_by';
                 }
             }
         }
@@ -1192,7 +1190,7 @@ abstract class Query extends Driver
      */
     public function having( $key, $value = NULL, $escape = NULL )
     {
-        return $this->_wh( 'qb_having', $key, $value, 'AND ', $escape );
+        return $this->_wh( '_having', $key, $value, 'AND ', $escape );
     }
 
     // --------------------------------------------------------------------
@@ -1210,7 +1208,7 @@ abstract class Query extends Driver
      */
     public function or_having( $key, $value = NULL, $escape = NULL )
     {
-        return $this->_wh( 'qb_having', $key, $value, 'OR ', $escape );
+        return $this->_wh( '_having', $key, $value, 'OR ', $escape );
     }
 
     // --------------------------------------------------------------------
@@ -1218,13 +1216,13 @@ abstract class Query extends Driver
     /**
      * ORDER BY
      *
-     * @param    string $orderby
+     * @param    string $order_by
      * @param    string $direction ASC, DESC or RANDOM
      * @param    bool   $escape
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
-    public function order_by( $orderby, $direction = '', $escape = NULL )
+    public function order_by( $order_by, $direction = '', $escape = NULL )
     {
         $direction = strtoupper( trim( $direction ) );
 
@@ -1233,11 +1231,11 @@ abstract class Query extends Driver
             $direction = '';
 
             // Do we have a seed value?
-            $orderby = ctype_digit( (string)$orderby )
-                ? sprintf( $this->_random_keyword[ 1 ], $orderby )
-                : $this->_random_keyword[ 0 ];
+            $order_by = ctype_digit( (string)$order_by )
+                ? sprintf( $this->_random_keywords[ 1 ], $order_by )
+                : $this->_random_keywords[ 0 ];
         }
-        elseif( empty( $orderby ) )
+        elseif( empty( $order_by ) )
         {
             return $this;
         }
@@ -1250,15 +1248,14 @@ abstract class Query extends Driver
 
         if( $escape === FALSE )
         {
-            $qb_orderby[ ] = array( 'field' => $orderby, 'direction' => $direction, 'escape' => FALSE );
+            $order_by[ ] = array( 'field' => $order_by, 'direction' => $direction, 'escape' => FALSE );
         }
         else
         {
-            $qb_orderby = array();
-            foreach( explode( ',', $orderby ) as $field )
+            $order_by = array();
+            foreach( explode( ',', $order_by ) as $field )
             {
-                $qb_orderby[ ] = ( $direction === '' && preg_match( '/\s+(ASC|DESC)$/i', rtrim( $field ), $match,
-                                                                    PREG_OFFSET_CAPTURE ) )
+                $order_by[ ] = ( $direction === '' && preg_match( '/\s+(ASC|DESC)$/i', rtrim( $field ), $match, PREG_OFFSET_CAPTURE ) )
                     ? array(
                         'field'     => ltrim( substr( $field, 0, $match[ 0 ][ 1 ] ) ),
                         'direction' => ' ' . $match[ 1 ][ 0 ], 'escape' => TRUE
@@ -1267,11 +1264,11 @@ abstract class Query extends Driver
             }
         }
 
-        $this->qb_orderby = array_merge( $this->qb_orderby, $qb_orderby );
-        if( $this->qb_caching === TRUE )
+        $this->_order_by = array_merge( $this->_order_by, $order_by );
+        if( $this->_caching === TRUE )
         {
-            $this->qb_cache_orderby = array_merge( $this->qb_cache_orderby, $qb_orderby );
-            $this->qb_cache_exists[ ] = 'orderby';
+            $this->_cache_order_by = array_merge( $this->_cache_order_by, $order_by );
+            $this->_cache_exists[ ] = 'order_by';
         }
 
         return $this;
@@ -1284,11 +1281,11 @@ abstract class Query extends Driver
      *
      * @param    int $offset OFFSET value
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function offset( $offset )
     {
-        empty( $offset ) OR $this->qb_offset = (int)$offset;
+        empty( $offset ) OR $this->_offset = (int)$offset;
 
         return $this;
     }
@@ -1330,44 +1327,44 @@ abstract class Query extends Driver
      *
      * Generates the FROM portion of the query
      *
-     * @param    mixed $from can be a string or array
+     * @param    mixed $tables can be a string or array
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
-    public function from( $from )
+    public function from( $tables )
     {
-        foreach( (array)$from as $val )
+        foreach( (array)$tables as $table )
         {
-            if( strpos( $val, ',' ) !== FALSE )
+            if( strpos( $table, ',' ) !== FALSE )
             {
-                foreach( explode( ',', $val ) as $v )
+                foreach( explode( ',', $table ) as $x_table )
                 {
-                    $v = trim( $v );
-                    $this->_track_aliases( $v );
+                    $x_table = trim( $x_table );
+                    $this->_track_aliases( $x_table );
 
-                    $this->qb_from[ ] = $v = $this->protect_identifiers( $v, TRUE, NULL, FALSE );
+                    $this->_from[ ] = $x_table = $this->protect_identifiers( $x_table, TRUE, NULL, FALSE );
 
-                    if( $this->qb_caching === TRUE )
+                    if( $this->_caching === TRUE )
                     {
-                        $this->qb_cache_from[ ] = $v;
-                        $this->qb_cache_exists[ ] = 'from';
+                        $this->_cache_from[ ] = $x_table;
+                        $this->_cache_exists[ ] = 'from';
                     }
                 }
             }
             else
             {
-                $val = trim( $val );
+                $table = trim( $table );
 
                 // Extract any aliases that might exist. We use this information
                 // in the protect_identifiers to know whether to add a table prefix
-                $this->_track_aliases( $val );
+                $this->_track_aliases( $table );
 
-                $this->qb_from[ ] = $val = $this->protect_identifiers( $val, TRUE, NULL, FALSE );
+                $this->_from[ ] = $table = $this->protect_identifiers( $table, TRUE, NULL, FALSE );
 
-                if( $this->qb_caching === TRUE )
+                if( $this->_caching === TRUE )
                 {
-                    $this->qb_cache_from[ ] = $val;
-                    $this->qb_cache_exists[ ] = 'from';
+                    $this->_cache_from[ ] = $table;
+                    $this->_cache_exists[ ] = 'from';
                 }
             }
         }
@@ -1383,9 +1380,9 @@ abstract class Query extends Driver
      * Generates a query string based on which functions were used.
      * Should not be called directly.
      *
-     * @param    bool $select_override
+     * @param   bool    $select_override
      *
-     * @return    string
+     * @return  string
      */
     protected function _compile_select( $select_override = FALSE )
     {
@@ -1399,9 +1396,9 @@ abstract class Query extends Driver
         }
         else
         {
-            $sql = ( ! $this->qb_distinct ) ? 'SELECT ' : 'SELECT DISTINCT ';
+            $sql = ( ! $this->_distinct ) ? 'SELECT ' : 'SELECT DISTINCT ';
 
-            if( count( $this->qb_select ) === 0 )
+            if( count( $this->_select ) === 0 )
             {
                 $sql .= '*';
             }
@@ -1410,35 +1407,32 @@ abstract class Query extends Driver
                 // Cycle through the "select" portion of the query and prep each column name.
                 // The reason we protect identifiers here rather then in the select() function
                 // is because until the user calls the from() function we don't know if there are aliases
-                foreach( $this->qb_select as $key => $val )
+                foreach( $this->_select as $key => $val )
                 {
-                    $no_escape = isset( $this->qb_no_escape[ $key ] ) ? $this->qb_no_escape[ $key ] : NULL;
-                    $this->qb_select[ $key ] = $this->protect_identifiers( $val, FALSE, $no_escape );
+                    $no_escape = isset( $this->_no_escape[ $key ] ) ? $this->_no_escape[ $key ] : NULL;
+                    $this->_select[ $key ] = $this->protect_identifiers( $val, FALSE, $no_escape );
                 }
 
-                $sql .= implode( ', ', $this->qb_select );
+                $sql .= implode( ', ', $this->_select );
             }
         }
 
         // Write the "FROM" portion of the query
-        if( count( $this->qb_from ) > 0 )
+        if( count( $this->_from ) > 0 )
         {
             $sql .= "\nFROM " . $this->_from_tables();
         }
 
         // Write the "JOIN" portion of the query
-        if( count( $this->qb_join ) > 0 )
+        if( count( $this->_join ) > 0 )
         {
-            $sql .= "\n" . implode( "\n", $this->qb_join );
+            $sql .= "\n" . implode( "\n", $this->_join );
         }
 
-        $sql .= $this->_compile_wh( 'qb_where' )
-                . $this->_compile_group_by()
-                . $this->_compile_wh( 'qb_having' )
-                . $this->_compile_order_by(); // ORDER BY
+        $sql .= $this->_compile_where( '_where' ) . $this->_compile_group_by() . $this->_compile_where( '_having' ) . $this->_compile_order_by(); // ORDER BY
 
         // LIMIT
-        if( $this->qb_limit )
+        if( $this->_limit )
         {
             return $this->_limit( $sql . "\n" );
         }
@@ -1458,45 +1452,45 @@ abstract class Query extends Driver
      */
     protected function _merge_cache()
     {
-        if( count( $this->qb_cache_exists ) === 0 )
+        if( count( $this->_cache_exists ) === 0 )
         {
             return;
         }
-        elseif( in_array( 'select', $this->qb_cache_exists, TRUE ) )
+        elseif( in_array( 'select', $this->_cache_exists, TRUE ) )
         {
-            $qb_no_escape = $this->qb_cache_no_escape;
+            $no_escape = $this->_cache_no_escape;
         }
 
-        foreach( array_unique( $this->qb_cache_exists ) as $val ) // select, from, etc.
+        foreach( array_unique( $this->_cache_exists ) as $cache ) // select, from, etc.
         {
-            $qb_variable = 'qb_' . $val;
-            $qb_cache_var = 'qb_cache_' . $val;
-            $qb_new = $this->$qb_cache_var;
+            $variable = '_' . $cache;
+            $cache_variable = '_cache_' . $cache;
+            $new_variable = $this->$cache_variable;
 
-            for( $i = 0, $c = count( $this->$qb_variable ); $i < $c; $i++ )
+            for( $i = 0, $c = count( $this->$variable ); $i < $c; $i++ )
             {
-                if( ! in_array( $this->{$qb_variable}[ $i ], $qb_new, TRUE ) )
+                if( ! in_array( $this->{$variable}[ $i ], $new_variable, TRUE ) )
                 {
-                    $qb_new[ ] = $this->{$qb_variable}[ $i ];
-                    if( $val === 'select' )
+                    $new_variable[ ] = $this->{$variable}[ $i ];
+                    if( $cache === 'select' )
                     {
-                        $qb_no_escape[ ] = $this->qb_no_escape[ $i ];
+                        $no_escape[ ] = $this->_no_escape[ $i ];
                     }
                 }
             }
 
-            $this->$qb_variable = $qb_new;
-            if( $val === 'select' )
+            $this->$variable = $new_variable;
+            if( $cache === 'select' )
             {
-                $this->qb_no_escape = $qb_no_escape;
+                $this->_no_escape = $no_escape;
             }
         }
 
         // If we are "protecting identifiers" we need to examine the "from"
         // portion of the query to determine if there are any aliases
-        if( $this->_protect_identifiers === TRUE && count( $this->qb_cache_from ) > 0 )
+        if( $this->_protect_identifiers === TRUE && count( $this->_cache_from ) > 0 )
         {
-            $this->_track_aliases( $this->qb_from );
+            $this->_track_aliases( $this->_from );
         }
     }
 
@@ -1510,11 +1504,11 @@ abstract class Query extends Driver
      *
      * Note: This is only used (and overridden) by MySQL and CUBRID.
      *
-     * @return    string
+     * @return  string
      */
     protected function _from_tables()
     {
-        return implode( ', ', $this->qb_from );
+        return implode( ', ', $this->_from );
     }
 
     // --------------------------------------------------------------------
@@ -1526,42 +1520,41 @@ abstract class Query extends Driver
      *
      * Required so that aliases are tracked properly, regardless of wether
      * where(), or_where(), having(), or_having are called prior to from(),
-     * join() and db_prefix is added only if needed.
+     * join() and prefix_table is added only if needed.
      *
-     * @param    string $qb_key 'qb_where' or 'qb_having'
+     * @param    string $property '_where' or '_having'
      *
-     * @return    string    SQL statement
+     * @return  string  SQL statement
      */
-    protected function _compile_wh( $qb_key )
+    protected function _compile_where( $property )
     {
-        if( count( $this->$qb_key ) > 0 )
+        if( count( $this->$property ) > 0 )
         {
-            for( $i = 0, $c = count( $this->$qb_key ); $i < $c; $i++ )
+            for( $i = 0, $c = count( $this->$property ); $i < $c; $i++ )
             {
                 // Is this condition already compiled?
-                if( is_string( $this->{$qb_key}[ $i ] ) )
+                if( is_string( $this->{$property}[ $i ] ) )
                 {
                     continue;
                 }
-                elseif( $this->{$qb_key}[ $i ][ 'escape' ] === FALSE )
+                elseif( $this->{$property}[ $i ][ 'escape' ] === FALSE )
                 {
-                    $this->{$qb_key}[ $i ] = $this->{$qb_key}[ $i ][ 'condition' ];
+                    $this->{$property}[ $i ] = $this->{$property}[ $i ][ 'condition' ];
                     continue;
                 }
 
                 // Split multiple conditions
                 $conditions = preg_split(
                     '/(\s*AND\s+|\s*OR\s+)/i',
-                    $this->{$qb_key}[ $i ][ 'condition' ],
+                    $this->{$property}[ $i ][ 'condition' ],
                     -1,
                     PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY
                 );
 
                 for( $ci = 0, $cc = count( $conditions ); $ci < $cc; $ci++ )
                 {
-                    if( ( $op = $this->_get_operator( $conditions[ $ci ] ) ) === FALSE
-                        OR ! preg_match( '/^(\(?)(.*)(' . preg_quote( $op, '/' ) . ')\s*(.*(?<!\)))?(\)?)$/i',
-                                         $conditions[ $ci ], $matches )
+                    if( ( $op = $this->_get_operator( $conditions[ $ci ] ) ) === FALSE OR
+                        ! preg_match( '/^(\(?)(.*)(' . preg_quote( $op, '/' ) . ')\s*(.*(?<!\)))?(\)?)$/i', $conditions[ $ci ], $matches )
                     )
                     {
                         continue;
@@ -1586,11 +1579,10 @@ abstract class Query extends Driver
                                          . ' ' . trim( $matches[ 3 ] ) . $matches[ 4 ] . $matches[ 5 ];
                 }
 
-                $this->{$qb_key}[ $i ] = implode( '', $conditions );
+                $this->{$property}[ $i ] = implode( '', $conditions );
             }
 
-            return ( $qb_key === 'qb_having' ? "\nHAVING " : "\nWHERE " )
-                   . implode( "\n", $this->$qb_key );
+            return ( $property === '_having' ? "\nHAVING " : "\nWHERE " ) . implode( "\n", $this->$property );
         }
 
         return '';
@@ -1603,34 +1595,32 @@ abstract class Query extends Driver
      *
      * Determines if a string represents a literal value or a field name
      *
-     * @param    string $str
+     * @param   string  $string
      *
-     * @return    bool
+     * @return  bool
      */
-    protected function _is_literal( $str )
+    protected function _is_literal( $string )
     {
-        $str = trim( $str );
+        $string = trim( $string );
 
-        if( empty( $str ) OR ctype_digit( $str ) OR (string)(float)$str === $str OR in_array( strtoupper( $str ),
-                                                                                              array(
-                                                                                                  'TRUE',
-                                                                                                  'FALSE'
-                                                                                              ),
-                                                                                              TRUE )
+        if( empty( $string ) OR
+            ctype_digit( $string ) OR
+            (string)(float)$string === $string OR
+            in_array( strtoupper( $string ), array( 'TRUE', 'FALSE' ), TRUE )
         )
         {
             return TRUE;
         }
 
-        static $_str;
+        static $_string;
 
-        if( empty( $_str ) )
+        if( empty( $_string ) )
         {
-            $_str = ( $this->_escape_char !== '"' )
+            $_string = ( $this->_escape_character !== '"' )
                 ? array( '"', "'" ) : array( "'" );
         }
 
-        return in_array( $str[ 0 ], $_str, TRUE );
+        return in_array( $string[ 0 ], $_string, TRUE );
     }
 
     // --------------------------------------------------------------------
@@ -1641,29 +1631,29 @@ abstract class Query extends Driver
      * Escapes identifiers in GROUP BY statements at execution time.
      *
      * Required so that aliases are tracked properly, regardless of wether
-     * group_by() is called prior to from(), join() and db_prefix is added
+     * group_by() is called prior to from(), join() and prefix_table is added
      * only if needed.
      *
-     * @return    string    SQL statement
+     * @return  string  SQL statement
      */
     protected function _compile_group_by()
     {
-        if( count( $this->qb_groupby ) > 0 )
+        if( count( $this->_group_by ) > 0 )
         {
-            for( $i = 0, $c = count( $this->qb_groupby ); $i < $c; $i++ )
+            for( $i = 0, $c = count( $this->_group_by ); $i < $c; $i++ )
             {
                 // Is it already compiled?
-                if( is_string( $this->qb_groupby[ $i ] ) )
+                if( is_string( $this->_group_by[ $i ] ) )
                 {
                     continue;
                 }
 
-                $this->qb_groupby[ $i ] = ( $this->qb_groupby[ $i ][ 'escape' ] === FALSE OR $this->_is_literal( $this->qb_groupby[ $i ][ 'field' ] ) )
-                    ? $this->qb_groupby[ $i ][ 'field' ]
-                    : $this->protect_identifiers( $this->qb_groupby[ $i ][ 'field' ] );
+                $this->_group_by[ $i ] = ( $this->_group_by[ $i ][ 'escape' ] === FALSE OR $this->_is_literal( $this->_group_by[ $i ][ 'field' ] ) )
+                    ? $this->_group_by[ $i ][ 'field' ]
+                    : $this->protect_identifiers( $this->_group_by[ $i ][ 'field' ] );
             }
 
-            return "\nGROUP BY " . implode( ', ', $this->qb_groupby );
+            return "\nGROUP BY " . implode( ', ', $this->_group_by );
         }
 
         return '';
@@ -1677,30 +1667,30 @@ abstract class Query extends Driver
      * Escapes identifiers in ORDER BY statements at execution time.
      *
      * Required so that aliases are tracked properly, regardless of wether
-     * order_by() is called prior to from(), join() and db_prefix is added
+     * order_by() is called prior to from(), join() and prefix_table is added
      * only if needed.
      *
-     * @return    string    SQL statement
+     * @return  string    SQL statement
      */
     protected function _compile_order_by()
     {
-        if( is_array( $this->qb_orderby ) && count( $this->qb_orderby ) > 0 )
+        if( is_array( $this->_order_by ) && count( $this->_order_by ) > 0 )
         {
-            for( $i = 0, $c = count( $this->qb_orderby ); $i < $c; $i++ )
+            for( $i = 0, $c = count( $this->_order_by ); $i < $c; $i++ )
             {
-                if( $this->qb_orderby[ $i ][ 'escape' ] !== FALSE && ! $this->_is_literal( $this->qb_orderby[ $i ][ 'field' ] ) )
+                if( $this->_order_by[ $i ][ 'escape' ] !== FALSE && ! $this->_is_literal( $this->_order_by[ $i ][ 'field' ] ) )
                 {
-                    $this->qb_orderby[ $i ][ 'field' ] = $this->protect_identifiers( $this->qb_orderby[ $i ][ 'field' ] );
+                    $this->_order_by[ $i ][ 'field' ] = $this->protect_identifiers( $this->_order_by[ $i ][ 'field' ] );
                 }
 
-                $this->qb_orderby[ $i ] = $this->qb_orderby[ $i ][ 'field' ] . $this->qb_orderby[ $i ][ 'direction' ];
+                $this->_order_by[ $i ] = $this->_order_by[ $i ][ 'field' ] . $this->_order_by[ $i ][ 'direction' ];
             }
 
-            return $this->qb_orderby = "\nORDER BY " . implode( ', ', $this->qb_orderby );
+            return $this->_order_by = "\nORDER BY " . implode( ', ', $this->_order_by );
         }
-        elseif( is_string( $this->qb_orderby ) )
+        elseif( is_string( $this->_order_by ) )
         {
-            return $this->qb_orderby;
+            return $this->_order_by;
         }
 
         return '';
@@ -1713,13 +1703,13 @@ abstract class Query extends Driver
      *
      * Generates a platform-specific LIMIT clause.
      *
-     * @param    string $sql SQL Query
+     * @param   string $sql SQL Query
      *
-     * @return    string
+     * @return  string
      */
     protected function _limit( $sql )
     {
-        return $sql . ' LIMIT ' . ( $this->qb_offset ? $this->qb_offset . ', ' : '' ) . $this->qb_limit;
+        return $sql . ' LIMIT ' . ( $this->_offset ? $this->_offset . ', ' : '' ) . $this->_limit;
     }
 
     // --------------------------------------------------------------------
@@ -1732,18 +1722,18 @@ abstract class Query extends Driver
     protected function _reset_select()
     {
         $this->_reset_run( array(
-                               'qb_select'         => array(),
-                               'qb_from'           => array(),
-                               'qb_join'           => array(),
-                               'qb_where'          => array(),
-                               'qb_groupby'        => array(),
-                               'qb_having'         => array(),
-                               'qb_orderby'        => array(),
-                               'qb_aliased_tables' => array(),
-                               'qb_no_escape'      => array(),
-                               'qb_distinct'       => FALSE,
-                               'qb_limit'          => FALSE,
-                               'qb_offset'         => FALSE
+                               '_select'         => array(),
+                               '_from'           => array(),
+                               '_join'           => array(),
+                               '_where'          => array(),
+                               '_group_by'        => array(),
+                               '_having'         => array(),
+                               '_order_by'        => array(),
+                               '_aliased_tables' => array(),
+                               '_no_escape'      => array(),
+                               '_distinct'       => FALSE,
+                               '_limit'          => FALSE,
+                               '_offset'         => FALSE
                            ) );
     }
 
@@ -1752,13 +1742,13 @@ abstract class Query extends Driver
     /**
      * Resets the query builder values.  Called by the get() function
      *
-     * @param    array    An array of fields to reset
+     * @param   array $reset_items An array of fields to reset
      *
-     * @return    void
+     * @return  void
      */
-    protected function _reset_run( $qb_reset_items )
+    protected function _reset_run( $reset_items )
     {
-        foreach( $qb_reset_items as $item => $default_value )
+        foreach( $reset_items as $item => $default_value )
         {
             $this->$item = $default_value;
         }
@@ -1805,12 +1795,12 @@ abstract class Query extends Driver
      * @param    int $value  LIMIT value
      * @param    int $offset OFFSET value
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function limit( $value, $offset = 0 )
     {
-        is_null( $value ) OR $this->qb_limit = (int)$value;
-        empty( $offset ) OR $this->qb_offset = (int)$offset;
+        is_null( $value ) OR $this->_limit = (int)$value;
+        empty( $offset ) OR $this->_offset = (int)$offset;
 
         return $this;
     }
@@ -1823,9 +1813,9 @@ abstract class Query extends Driver
      * Generates a platform-specific query string that counts all records
      * returned by an Query Builder query.
      *
-     * @param    string
+     * @param   string $table
      *
-     * @return    int
+     * @return  int
      */
     public function count_all_results( $table = '' )
     {
@@ -1835,9 +1825,10 @@ abstract class Query extends Driver
             $this->from( $table );
         }
 
-        $result = ( $this->qb_distinct === TRUE )
+        $result = ( $this->_distinct === TRUE )
             ? $this->query( $this->_count_string . $this->protect_identifiers( 'numrows' ) . "\nFROM (\n" . $this->_compile_select() . "\n) CI_count_all_results" )
             : $this->query( $this->_compile_select( $this->_count_string . $this->protect_identifiers( 'numrows' ) ) );
+
         $this->_reset_select();
 
         if( $result->num_rows() === 0 )
@@ -1857,12 +1848,12 @@ abstract class Query extends Driver
      *
      * Allows the where clause, limit and offset to be added directly
      *
-     * @param    string $table
-     * @param    string $where
-     * @param    int    $limit
-     * @param    int    $offset
+     * @param   string $table
+     * @param   string $where
+     * @param   int    $limit
+     * @param   int    $offset
      *
-     * @return    object
+     * @return  object
      */
     public function get_where( $table = '', $where = NULL, $limit = NULL, $offset = NULL )
     {
@@ -1895,15 +1886,15 @@ abstract class Query extends Driver
      * Generates the WHERE portion of the query.
      * Separates multiple calls with 'AND'.
      *
-     * @param    mixed
-     * @param    mixed
-     * @param    bool
+     * @param   mixed $key
+     * @param   mixed $value
+     * @param   bool  $escape
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return  \O2System\O2DB\Interfaces\Query
      */
     public function where( $key, $value = NULL, $escape = NULL )
     {
-        return $this->_wh( 'qb_where', $key, $value, 'AND ', $escape );
+        return $this->_wh( '_where', $key, $value, 'AND ', $escape );
     }
 
     // --------------------------------------------------------------------
@@ -1913,11 +1904,12 @@ abstract class Query extends Driver
      *
      * Compiles batch insert strings and runs the queries
      *
-     * @param    string $table  Table to insert into
-     * @param    array  $set    An associative array of insert values
-     * @param    bool   $escape Whether to escape values and identifiers
+     * @param   string $table  Table to insert into
+     * @param   array  $set    An associative array of insert values
+     * @param   bool   $escape Whether to escape values and identifiers
      *
-     * @return    int    Number of rows inserted or FALSE on failure
+     * @return  int Number of rows inserted or FALSE on failure
+     * @throws  \Exception
      */
     public function insert_batch( $table = '', $set = NULL, $escape = NULL )
     {
@@ -1926,28 +1918,41 @@ abstract class Query extends Driver
             $this->set_insert_batch( $set, '', $escape );
         }
 
-        if( count( $this->qb_set ) === 0 )
+        if( count( $this->_sets ) === 0 )
         {
             // No valid data array. Folds in cases where keys and values did not match up
-            return ( $this->db_debug ) ? $this->display_error( 'db_must_use_set' ) : FALSE;
+            if( $this->debug_enabled )
+            {
+                throw new \Exception( 'You must use the "set" method to update an entry.' );
+            }
+
+            return FALSE;
         }
 
         if( $table === '' )
         {
-            if( ! isset( $this->qb_from[ 0 ] ) )
+            if( ! isset( $this->_from[ 0 ] ) )
             {
-                return ( $this->db_debug ) ? $this->display_error( 'db_must_set_table' ) : FALSE;
+                if( $this->debug_enabled )
+                {
+                    throw new \Exception( 'You must set the database table to be used with your query.' );
+                }
+
+                return FALSE;
             }
 
-            $table = $this->qb_from[ 0 ];
+            $table = $this->_from[ 0 ];
         }
 
         // Batch this baby
         $affected_rows = 0;
-        for( $i = 0, $total = count( $this->qb_set ); $i < $total; $i += 100 )
+        for( $i = 0, $total = count( $this->_sets ); $i < $total; $i += 100 )
         {
-            $this->query( $this->_insert_batch( $this->protect_identifiers( $table, TRUE, $escape, FALSE ),
-                                                $this->qb_keys, array_slice( $this->qb_set, $i, 100 ) ) );
+            $this->query( $this->_insert_batch(
+                $this->protect_identifiers( $table, TRUE, $escape, FALSE ),
+                $this->_keys, array_slice( $this->_sets, $i, 100 )
+            ) );
+
             $affected_rows += $this->affected_rows();
         }
 
@@ -1961,35 +1966,35 @@ abstract class Query extends Driver
     /**
      * The "set_insert_batch" function.  Allows key/value pairs to be set for batch inserts
      *
-     * @param    mixed
-     * @param    string
-     * @param    bool
+     * @param   mixed  $keys
+     * @param   string $value
+     * @param   bool   $escape
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return  \O2System\O2DB\Interfaces\Query
      */
-    public function set_insert_batch( $key, $value = '', $escape = NULL )
+    public function set_insert_batch( $keys, $value = '', $escape = NULL )
     {
-        $key = $this->_object_to_array_batch( $key );
+        $keys = $this->_object_to_array_batch( $keys );
 
-        if( ! is_array( $key ) )
+        if( ! is_array( $keys ) )
         {
-            $key = array( $key => $value );
+            $keys = array( $keys => $value );
         }
 
         is_bool( $escape ) OR $escape = $this->_protect_identifiers;
 
-        $keys = array_keys( $this->_object_to_array( current( $key ) ) );
+        $keys = array_keys( $this->_object_to_array( current( $keys ) ) );
         sort( $keys );
 
-        foreach( $key as $row )
+        foreach( $keys as $row )
         {
             $row = $this->_object_to_array( $row );
-            if( count( array_diff( $keys, array_keys( $row ) ) ) > 0 OR count( array_diff( array_keys( $row ),
-                                                                                           $keys ) ) > 0
+            if( count( array_diff( $keys, array_keys( $row ) ) ) > 0 OR
+                count( array_diff( array_keys( $row ), $keys ) ) > 0
             )
             {
                 // batch function above returns an error on an empty array
-                $this->qb_set[ ] = array();
+                $this->_sets[ ] = array();
 
                 return;
             }
@@ -2007,12 +2012,12 @@ abstract class Query extends Driver
                 $row = $clean;
             }
 
-            $this->qb_set[ ] = '(' . implode( ',', $row ) . ')';
+            $this->_sets[ ] = '(' . implode( ',', $row ) . ')';
         }
 
-        foreach( $keys as $k )
+        foreach( $keys as $key )
         {
-            $this->qb_keys[ ] = $this->protect_identifiers( $k, FALSE, $escape );
+            $this->_keys[ ] = $this->protect_identifiers( $key, FALSE, $escape );
         }
 
         return $this;
@@ -2117,13 +2122,13 @@ abstract class Query extends Driver
     protected function _reset_write()
     {
         $this->_reset_run( array(
-                               'qb_set'     => array(),
-                               'qb_from'    => array(),
-                               'qb_join'    => array(),
-                               'qb_where'   => array(),
-                               'qb_orderby' => array(),
-                               'qb_keys'    => array(),
-                               'qb_limit'   => FALSE
+                               '_sets'     => array(),
+                               '_from'     => array(),
+                               '_join'     => array(),
+                               '_where'    => array(),
+                               '_order_by' => array(),
+                               '_keys'     => array(),
+                               '_limit'    => FALSE
                            ) );
     }
 
@@ -2147,11 +2152,9 @@ abstract class Query extends Driver
         }
 
         $sql = $this->_insert(
-            $this->protect_identifiers(
-                $this->qb_from[ 0 ], TRUE, NULL, FALSE
-            ),
-            array_keys( $this->qb_set ),
-            array_values( $this->qb_set )
+            $this->protect_identifiers( $this->_from[ 0 ], TRUE, NULL, FALSE ),
+            array_keys( $this->_sets ),
+            array_values( $this->_sets )
         );
 
         if( $reset === TRUE )
@@ -2171,24 +2174,35 @@ abstract class Query extends Driver
      * validate that the there data is actually being set and that table
      * has been chosen to be inserted into.
      *
-     * @param    string    the table to insert data into
+     * @param   string $table the table to insert data into
      *
-     * @return    string
+     * @return  string
+     * @throws  \Exception
      */
     protected function _validate_insert( $table = '' )
     {
-        if( count( $this->qb_set ) === 0 )
+        if( count( $this->_sets ) === 0 )
         {
-            return ( $this->db_debug ) ? $this->display_error( 'db_must_use_set' ) : FALSE;
+            if( $this->debug_enabled )
+            {
+                throw new \Exception( 'You must use the "set" method to update an entry.' );
+            }
+
+            return FALSE;
         }
 
         if( $table !== '' )
         {
-            $this->qb_from[ 0 ] = $table;
+            $this->_from[ 0 ] = $table;
         }
-        elseif( ! isset( $this->qb_from[ 0 ] ) )
+        elseif( ! isset( $this->_from[ 0 ] ) )
         {
-            return ( $this->db_debug ) ? $this->display_error( 'db_must_set_table' ) : FALSE;
+            if( $this->debug_enabled )
+            {
+                throw new \Exception( 'You must set the database table to be used with your query.' );
+            }
+
+            return FALSE;
         }
 
         return TRUE;
@@ -2201,11 +2215,11 @@ abstract class Query extends Driver
      *
      * Compiles an insert string and runs the query
      *
-     * @param         string    the table to insert data into
-     * @param         array     an associative array of insert values
-     * @param    bool $escape   Whether to escape values and identifiers
+     * @param   string $table  the table to insert data into
+     * @param   array  $set    an associative array of insert values
+     * @param   bool   $escape Whether to escape values and identifiers
      *
-     * @return    object
+     * @return  object
      */
     public function insert( $table = '', $set = NULL, $escape = NULL )
     {
@@ -2220,11 +2234,9 @@ abstract class Query extends Driver
         }
 
         $sql = $this->_insert(
-            $this->protect_identifiers(
-                $this->qb_from[ 0 ], TRUE, $escape, FALSE
-            ),
-            array_keys( $this->qb_set ),
-            array_values( $this->qb_set )
+            $this->protect_identifiers( $this->_from[ 0 ], TRUE, $escape, FALSE ),
+            array_keys( $this->_sets ),
+            array_values( $this->_sets )
         );
 
         $this->_reset_write();
@@ -2239,11 +2251,11 @@ abstract class Query extends Driver
      *
      * Allows key/value pairs to be set for inserting or updating
      *
-     * @param    mixed    $key
-     * @param    string
-     * @param    bool
+     * @param   mixed  $key
+     * @param   string $value
+     * @param   bool   $escape
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return  \O2System\O2DB\Interfaces\Query
      */
     public function set( $key, $value = '', $escape = NULL )
     {
@@ -2258,7 +2270,7 @@ abstract class Query extends Driver
 
         foreach( $key as $k => $v )
         {
-            $this->qb_set[ $this->protect_identifiers( $k, FALSE, $escape ) ] = ( $escape )
+            $this->_sets[ $this->protect_identifiers( $k, FALSE, $escape ) ] = ( $escape )
                 ? $this->escape( $v ) : $v;
         }
 
@@ -2272,10 +2284,11 @@ abstract class Query extends Driver
      *
      * Compiles an replace into string and runs the query
      *
-     * @param    string    the table to replace data into
-     * @param    array     an associative array of insert values
+     * @param   string  the table to replace data into
+     * @param   array   an associative array of insert values
      *
-     * @return    object
+     * @return  object
+     * @throws  \Exception
      */
     public function replace( $table = '', $set = NULL )
     {
@@ -2284,23 +2297,36 @@ abstract class Query extends Driver
             $this->set( $set );
         }
 
-        if( count( $this->qb_set ) === 0 )
+        if( count( $this->_sets ) === 0 )
         {
-            return ( $this->db_debug ) ? $this->display_error( 'db_must_use_set' ) : FALSE;
+            if( $this->debug_enabled )
+            {
+                throw new \Exception( 'You must use the "set" method to update an entry.' );
+            }
+
+            return FALSE;
         }
 
         if( $table === '' )
         {
-            if( ! isset( $this->qb_from[ 0 ] ) )
+            if( ! isset( $this->_from[ 0 ] ) )
             {
-                return ( $this->db_debug ) ? $this->display_error( 'db_must_set_table' ) : FALSE;
+                if( $this->debug_enabled )
+                {
+                    throw new \Exception( 'You must set the database table to be used with your query.' );
+                }
+
+                return FALSE;
             }
 
-            $table = $this->qb_from[ 0 ];
+            $table = $this->_from[ 0 ];
         }
 
-        $sql = $this->_replace( $this->protect_identifiers( $table, TRUE, NULL, FALSE ), array_keys( $this->qb_set ),
-                                array_values( $this->qb_set ) );
+        $sql = $this->_replace(
+            $this->protect_identifiers( $table, TRUE, NULL, FALSE ),
+            array_keys( $this->_sets ),
+            array_values( $this->_sets )
+        );
 
         $this->_reset_write();
 
@@ -2314,11 +2340,11 @@ abstract class Query extends Driver
      *
      * Generates a platform-specific replace string from the supplied data
      *
-     * @param    string    the table name
-     * @param    array     the insert keys
-     * @param    array     the insert values
+     * @param   string  the table name
+     * @param   array   the insert keys
+     * @param   array   the insert values
      *
-     * @return    string
+     * @return  string
      */
     protected function _replace( $table, $keys, $values )
     {
@@ -2332,10 +2358,10 @@ abstract class Query extends Driver
      *
      * Compiles an update query and returns the sql
      *
-     * @param    string    the table to update
-     * @param    bool      TRUE: reset QB values; FALSE: leave QB values alone
+     * @param   string  the table to update
+     * @param   bool    TRUE: reset QB values; FALSE: leave QB values alone
      *
-     * @return    string
+     * @return  string
      */
     public function get_compiled_update( $table = '', $reset = TRUE )
     {
@@ -2347,7 +2373,10 @@ abstract class Query extends Driver
             return FALSE;
         }
 
-        $sql = $this->_update( $this->protect_identifiers( $this->qb_from[ 0 ], TRUE, NULL, FALSE ), $this->qb_set );
+        $sql = $this->_update(
+            $this->protect_identifiers( $this->_from[ 0 ], TRUE, NULL, FALSE ),
+            $this->_sets
+        );
 
         if( $reset === TRUE )
         {
@@ -2366,24 +2395,35 @@ abstract class Query extends Driver
      * validate that data is actually being set and that a table has been
      * chosen to be update.
      *
-     * @param    string    the table to update data on
+     * @param   string $table the table to update data on
      *
-     * @return    bool
+     * @return  bool
+     * @throws  \Exception
      */
     protected function _validate_update( $table = '' )
     {
-        if( count( $this->qb_set ) === 0 )
+        if( count( $this->_sets ) === 0 )
         {
-            return ( $this->db_debug ) ? $this->display_error( 'db_must_use_set' ) : FALSE;
+            if( $this->debug_enabled )
+            {
+                throw new \Exception( 'You must use the "set" method to update an entry.' );
+            }
+
+            return FALSE;
         }
 
         if( $table !== '' )
         {
-            $this->qb_from[ 0 ] = $table;
+            $this->_from[ 0 ] = $table;
         }
-        elseif( ! isset( $this->qb_from[ 0 ] ) )
+        elseif( ! isset( $this->_from[ 0 ] ) )
         {
-            return ( $this->db_debug ) ? $this->display_error( 'db_must_set_table' ) : FALSE;
+            if( $this->debug_enabled )
+            {
+                throw new \Exception( 'You must set the database table to be used with your query.' );
+            }
+
+            return FALSE;
         }
 
         return TRUE;
@@ -2396,12 +2436,13 @@ abstract class Query extends Driver
      *
      * Compiles an update string and runs the query.
      *
-     * @param    string $table
-     * @param    array  $set An associative array of update values
-     * @param    mixed  $where
-     * @param    int    $limit
+     * @param   string $table
+     * @param   array  $set An associative array of update values
+     * @param   mixed  $where
+     * @param   int    $limit
      *
-     * @return    object
+     * @return  object
+     * @throws  \Exception
      */
     public function update( $table = '', $set = NULL, $where = NULL, $limit = NULL )
     {
@@ -2428,7 +2469,11 @@ abstract class Query extends Driver
             $this->limit( $limit );
         }
 
-        $sql = $this->_update( $this->protect_identifiers( $this->qb_from[ 0 ], TRUE, NULL, FALSE ), $this->qb_set );
+        $sql = $this->_update(
+            $this->protect_identifiers( $this->_from[ 0 ], TRUE, NULL, FALSE ),
+            $this->_sets
+        );
+
         $this->_reset_write();
 
         return $this->query( $sql );
@@ -2441,11 +2486,12 @@ abstract class Query extends Driver
      *
      * Compiles an update string and runs the query
      *
-     * @param    string    the table to retrieve the results from
-     * @param    array     an associative array of update values
-     * @param    string    the where key
+     * @param string $table
+     * @param null   $set
+     * @param null   $index
      *
-     * @return    int    number of rows affected or FALSE on failure
+     * @return int number of rows affected or FALSE on failure
+     * @throws \Exception
      */
     public function update_batch( $table = '', $set = NULL, $index = NULL )
     {
@@ -2454,7 +2500,12 @@ abstract class Query extends Driver
 
         if( $index === NULL )
         {
-            return ( $this->db_debug ) ? $this->display_error( 'db_must_use_index' ) : FALSE;
+            if( $this->debug_enabled )
+            {
+                throw new \Exception( 'You must specify an index to match on for batch updates.' );
+            }
+
+            return FALSE;
         }
 
         if( $set !== NULL )
@@ -2462,30 +2513,45 @@ abstract class Query extends Driver
             $this->set_update_batch( $set, $index );
         }
 
-        if( count( $this->qb_set ) === 0 )
+        if( count( $this->_sets ) === 0 )
         {
-            return ( $this->db_debug ) ? $this->display_error( 'db_must_use_set' ) : FALSE;
+            if( $this->debug_enabled )
+            {
+                throw new \Exception( 'You must use the "set" method to update an entry.' );
+            }
+
+            return FALSE;
         }
 
         if( $table === '' )
         {
-            if( ! isset( $this->qb_from[ 0 ] ) )
+            if( ! isset( $this->_from[ 0 ] ) )
             {
-                return ( $this->db_debug ) ? $this->display_error( 'db_must_set_table' ) : FALSE;
+                if( $this->debug_enabled )
+                {
+                    throw new \Exception( 'You must set the database table to be used with your query.' );
+                }
+
+                return FALSE;
             }
 
-            $table = $this->qb_from[ 0 ];
+            $table = $this->_from[ 0 ];
         }
 
         // Batch this baby
         $affected_rows = 0;
-        for( $i = 0, $total = count( $this->qb_set ); $i < $total; $i += 100 )
+
+        for( $i = 0, $total = count( $this->_sets ); $i < $total; $i += 100 )
         {
-            $this->query( $this->_update_batch( $this->protect_identifiers( $table, TRUE, NULL, FALSE ),
-                                                array_slice( $this->qb_set, $i, 100 ),
-                                                $this->protect_identifiers( $index ) ) );
+            $this->query( $this->_update_batch(
+                $this->protect_identifiers( $table, TRUE, NULL, FALSE ),
+                array_slice( $this->_sets, $i, 100 ),
+                $this->protect_identifiers( $index )
+            ) );
+
             $affected_rows += $this->affected_rows();
-            $this->qb_where = array();
+
+            $this->_where = array();
         }
 
         $this->_reset_write();
@@ -2498,44 +2564,45 @@ abstract class Query extends Driver
     /**
      * The "set_update_batch" function.  Allows key/value pairs to be set for batch updating
      *
-     * @param    array
-     * @param    string
-     * @param    bool
+     * @param        $keys
+     * @param string $index
+     * @param null   $escape
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return Query
+     * @throws \Exception
      */
-    public function set_update_batch( $key, $index = '', $escape = NULL )
+    public function set_update_batch( $keys, $index = '', $escape = NULL )
     {
-        $key = $this->_object_to_array_batch( $key );
+        $keys = $this->_object_to_array_batch( $keys );
 
-        if( ! is_array( $key ) )
+        if( ! is_array( $keys ) )
         {
             // @todo error
         }
 
         is_bool( $escape ) OR $escape = $this->_protect_identifiers;
 
-        foreach( $key as $k => $v )
+        foreach( $keys as $key => $value )
         {
             $index_set = FALSE;
             $clean = array();
-            foreach( $v as $k2 => $v2 )
+            foreach( $value as $k => $v )
             {
-                if( $k2 === $index )
+                if( $k === $index )
                 {
                     $index_set = TRUE;
                 }
 
-                $clean[ $this->protect_identifiers( $k2, FALSE,
-                                                    $escape ) ] = ( $escape === FALSE ) ? $v2 : $this->escape( $v2 );
+                $clean[ $this->protect_identifiers( $k, FALSE,
+                                                    $escape ) ] = ( $escape === FALSE ) ? $v : $this->escape( $v );
             }
 
             if( $index_set === FALSE )
             {
-                return $this->display_error( 'db_batch_missing_index' );
+                throw new \Exception( 'You must specify an index to match on for batch updates.' );
             }
 
-            $this->qb_set[ ] = $clean;
+            $this->_sets[ ] = $clean;
         }
 
         return $this;
@@ -2557,30 +2624,30 @@ abstract class Query extends Driver
     protected function _update_batch( $table, $values, $index )
     {
         $ids = array();
-        foreach( $values as $key => $val )
+        foreach( $values as $key => $value )
         {
-            $ids[ ] = $val[ $index ];
+            $ids[ ] = $value[ $index ];
 
-            foreach( array_keys( $val ) as $field )
+            foreach( array_keys( $value ) as $field )
             {
                 if( $field !== $index )
                 {
-                    $final[ $field ][ ] = 'WHEN ' . $index . ' = ' . $val[ $index ] . ' THEN ' . $val[ $field ];
+                    $final[ $field ][ ] = 'WHEN ' . $index . ' = ' . $value[ $index ] . ' THEN ' . $value[ $field ];
                 }
             }
         }
 
         $cases = '';
-        foreach( $final as $k => $v )
+        foreach( $final as $key => $value )
         {
-            $cases .= $k . " = CASE \n"
-                      . implode( "\n", $v ) . "\n"
-                      . 'ELSE ' . $k . ' END, ';
+            $cases .= $key . " = CASE \n"
+                      . implode( "\n", $value ) . "\n"
+                      . 'ELSE ' . $key . ' END, ';
         }
 
         $this->where( $index . ' IN(' . implode( ',', $ids ) . ')', NULL, FALSE );
 
-        return 'UPDATE ' . $table . ' SET ' . substr( $cases, 0, -2 ) . $this->_compile_wh( 'qb_where' );
+        return 'UPDATE ' . $table . ' SET ' . substr( $cases, 0, -2 ) . $this->_compile_where( '_where' );
     }
 
     // --------------------------------------------------------------------
@@ -2590,20 +2657,26 @@ abstract class Query extends Driver
      *
      * Compiles a delete string and runs "DELETE FROM table"
      *
-     * @param    string    the table to empty
+     * @param string $table the table to empty
      *
-     * @return    object
+     * @return object
+     * @throws \Exception
      */
     public function empty_table( $table = '' )
     {
         if( $table === '' )
         {
-            if( ! isset( $this->qb_from[ 0 ] ) )
+            if( ! isset( $this->_from[ 0 ] ) )
             {
-                return ( $this->db_debug ) ? $this->display_error( 'db_must_set_table' ) : FALSE;
+                if( $this->debug_enabled )
+                {
+                    throw new \Exception( 'You must set the database table to be used with your query.' );
+                }
+
+                return FALSE;
             }
 
-            $table = $this->qb_from[ 0 ];
+            $table = $this->_from[ 0 ];
         }
         else
         {
@@ -2629,8 +2702,7 @@ abstract class Query extends Driver
      */
     protected function _delete( $table )
     {
-        return 'DELETE FROM ' . $table . $this->_compile_wh( 'qb_where' )
-               . ( $this->qb_limit ? ' LIMIT ' . $this->qb_limit : '' );
+        return 'DELETE FROM ' . $table . $this->_compile_where( '_where' ) . ( $this->_limit ? ' LIMIT ' . $this->_limit : '' );
     }
 
     // --------------------------------------------------------------------
@@ -2642,20 +2714,26 @@ abstract class Query extends Driver
      * If the database does not support the truncate() command
      * This function maps to "DELETE FROM table"
      *
-     * @param    string    the table to truncate
+     * @param string $table the table to truncate
      *
-     * @return    object
+     * @return object
+     * @throws \Exception
      */
     public function truncate( $table = '' )
     {
         if( $table === '' )
         {
-            if( ! isset( $this->qb_from[ 0 ] ) )
+            if( ! isset( $this->_from[ 0 ] ) )
             {
-                return ( $this->db_debug ) ? $this->display_error( 'db_must_set_table' ) : FALSE;
+                if( $this->debug_enabled )
+                {
+                    throw new \Exception( 'You must set the database table to be used with your query.' );
+                }
+
+                return FALSE;
             }
 
-            $table = $this->qb_from[ 0 ];
+            $table = $this->_from[ 0 ];
         }
         else
         {
@@ -2715,12 +2793,13 @@ abstract class Query extends Driver
      *
      * Compiles a delete string and runs the query
      *
-     * @param    mixed    the table(s) to delete from. String or array
-     * @param    mixed    the where clause
-     * @param    mixed    the limit clause
-     * @param    bool
+     * @param string|array $table table(s) to delete from. String or array
+     * @param string       $where Where Clause
+     * @param null         $limit Limit Clause
+     * @param bool         $reset_data
      *
-     * @return    mixed
+     * @return mixed
+     * @throws \Exception
      */
     public function delete( $table = '', $where = '', $limit = NULL, $reset_data = TRUE )
     {
@@ -2729,12 +2808,17 @@ abstract class Query extends Driver
 
         if( $table === '' )
         {
-            if( ! isset( $this->qb_from[ 0 ] ) )
+            if( ! isset( $this->_from[ 0 ] ) )
             {
-                return ( $this->db_debug ) ? $this->display_error( 'db_must_set_table' ) : FALSE;
+                if( $this->debug_enabled )
+                {
+                    throw new \Exception( 'You must set the database table to be used with your query.' );
+                }
+
+                return FALSE;
             }
 
-            $table = $this->qb_from[ 0 ];
+            $table = $this->_from[ 0 ];
         }
         elseif( is_array( $table ) )
         {
@@ -2760,12 +2844,18 @@ abstract class Query extends Driver
             $this->limit( $limit );
         }
 
-        if( count( $this->qb_where ) === 0 )
+        if( count( $this->_where ) === 0 )
         {
-            return ( $this->db_debug ) ? $this->display_error( 'db_del_must_use_where' ) : FALSE;
+            if( $this->debug_enabled )
+            {
+                throw new \Exception( 'Deletes are not allowed unless they contain a "where" or "like" clause.' );
+            }
+
+            return FALSE;
         }
 
         $sql = $this->_delete( $table );
+
         if( $reset_data )
         {
             $this->_reset_write();
@@ -2781,18 +2871,19 @@ abstract class Query extends Driver
      *
      * Prepends a database prefix if one exists in configuration
      *
-     * @param    string    the table
+     * @param string $table the table
      *
-     * @return    string
+     * @return string
+     * @throws \Exception
      */
-    public function db_prefix( $table = '' )
+    public function prefix_table( $table = '' )
     {
         if( $table === '' )
         {
-            $this->display_error( 'db_table_name_required' );
+            throw new \Exception( 'A table name is required for that operation.' );
         }
 
-        return $this->db_prefix . $table;
+        return $this->prefix_table . $table;
     }
 
     // --------------------------------------------------------------------
@@ -2806,9 +2897,9 @@ abstract class Query extends Driver
      *
      * @return    string
      */
-    public function set_dbprefix( $prefix = '' )
+    public function set_table_prefix( $prefix = '' )
     {
-        return $this->db_prefix = $prefix;
+        return $this->prefix_table = $prefix;
     }
 
     // --------------------------------------------------------------------
@@ -2818,11 +2909,11 @@ abstract class Query extends Driver
      *
      * Starts QB caching
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function start_cache()
     {
-        $this->qb_caching = TRUE;
+        $this->_caching = TRUE;
 
         return $this;
     }
@@ -2834,11 +2925,11 @@ abstract class Query extends Driver
      *
      * Stops QB caching
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function stop_cache()
     {
-        $this->qb_caching = FALSE;
+        $this->_caching = FALSE;
 
         return $this;
     }
@@ -2850,21 +2941,21 @@ abstract class Query extends Driver
      *
      * Empties the QB cache
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function flush_cache()
     {
         $this->_reset_run( array(
-                               'qb_cache_select'    => array(),
-                               'qb_cache_from'      => array(),
-                               'qb_cache_join'      => array(),
-                               'qb_cache_where'     => array(),
-                               'qb_cache_groupby'   => array(),
-                               'qb_cache_having'    => array(),
-                               'qb_cache_orderby'   => array(),
-                               'qb_cache_set'       => array(),
-                               'qb_cache_exists'    => array(),
-                               'qb_cache_no_escape' => array()
+                               '_cache_select'    => array(),
+                               '_cache_from'      => array(),
+                               '_cache_join'      => array(),
+                               '_cache_where'     => array(),
+                               '_cache_group_by'  => array(),
+                               '_cache_having'    => array(),
+                               '_cache_order_by'  => array(),
+                               '_cache_sets'      => array(),
+                               '_cache_exists'    => array(),
+                               '_cache_no_escape' => array()
                            ) );
 
         return $this;
@@ -2877,7 +2968,7 @@ abstract class Query extends Driver
      *
      * Publicly-visible method to reset the QB values.
      *
-     * @return    O2System\Libraries\DB_query_builder
+     * @return    \O2System\O2DB\Interfaces\Query
      */
     public function reset_query()
     {

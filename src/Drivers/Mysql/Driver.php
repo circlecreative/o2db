@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,30 +29,31 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
-namespace O2System\O2DB\Drivers\MySQL;
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
+// ------------------------------------------------------------------------
 
+namespace O2System\O2DB\Drivers\Mysql;
 
-class Driver extends \O2System\O2DB
+// ------------------------------------------------------------------------
+
+use O2System\O2DB\Interfaces\Driver as DriverInterface;
+
+/**
+ * MySQL Database Driver
+ *
+ * @author      Circle Creative Developer Team
+ */
+class Driver extends DriverInterface
 {
-
-    /**
-     * Database driver
-     *
-     * @var    string
-     */
-    public $dbdriver = 'mysql';
-
     /**
      * Compression flag
      *
-     * @var    bool
+     * @access  public
+     * @type    bool
      */
     public $compress = FALSE;
 
@@ -63,7 +64,8 @@ class Driver extends \O2System\O2DB
      * of affected rows to be shown. Uses a preg_replace when enabled,
      * adding a bit more processing to all queries.
      *
-     * @var    bool
+     * @access  public
+     * @type    bool
      */
     public $delete_hack = TRUE;
 
@@ -72,7 +74,8 @@ class Driver extends \O2System\O2DB
      *
      * Whether we're running in strict SQL mode.
      *
-     * @var    bool
+     * @access  public
+     * @type    bool
      */
     public $stricton = FALSE;
 
@@ -81,20 +84,19 @@ class Driver extends \O2System\O2DB
     /**
      * Identifier escape character
      *
-     * @var    string
+     * @access  public
+     * @type    string
      */
-    protected $_escape_char = '`';
+    protected $_escape_character = '`';
 
     // --------------------------------------------------------------------
 
     /**
      * Class constructor
      *
-     * @access public
+     * @param   array $params
      *
-     * @param    array $params
-     *
-     * @return    void
+     * @access  public
      */
     public function __construct( $params )
     {
@@ -111,13 +113,13 @@ class Driver extends \O2System\O2DB
     /**
      * Non-persistent database connection
      *
-     * @access public
+     * @param   bool $persistent
      *
-     * @param    bool $persistent
-     *
-     * @return    resource
+     * @access  public
+     * @return  resource
+     * @throws  \Exception
      */
-    public function db_connect( $persistent = FALSE )
+    public function connect( $persistent = FALSE )
     {
         $client_flags = ( $this->compress === FALSE ) ? 0 : MYSQL_CLIENT_COMPRESS;
 
@@ -127,28 +129,29 @@ class Driver extends \O2System\O2DB
         }
 
         // Error suppression is necessary mostly due to PHP 5.5+ issuing E_DEPRECATED messages
-        $this->conn_id = ( $persistent === TRUE )
+        $this->id_connection = ( $persistent === TRUE )
             ? mysql_pconnect( $this->hostname, $this->username, $this->password, $client_flags )
             : mysql_connect( $this->hostname, $this->username, $this->password, TRUE, $client_flags );
 
         // ----------------------------------------------------------------
 
         // Select the DB... assuming a database name is specified in the config file
-        if( $this->database !== '' && ! $this->db_select() )
+        if( $this->database !== '' && ! $this->select() )
         {
-            log_message( 'error', 'Unable to select database: ' . $this->database );
+            if( $this->debug_enabled )
+            {
+                throw new \Exception( 'Unable to select the specified database: ' . $this->database );
+            }
 
-            return ( $this->db_debug === TRUE )
-                ? $this->display_error( 'db_unable_to_select', $this->database )
-                : FALSE;
+            return FALSE;
         }
 
-        if( $this->stricton && is_resource( $this->conn_id ) )
+        if( $this->stricton && is_resource( $this->id_connection ) )
         {
             $this->simple_query( 'SET SESSION sql_mode="STRICT_ALL_TABLES"' );
         }
 
-        return $this->conn_id;
+        return $this->id_connection;
     }
 
     // --------------------------------------------------------------------
@@ -156,20 +159,19 @@ class Driver extends \O2System\O2DB
     /**
      * Select the database
      *
-     * @access public
+     * @param   string $database
      *
-     * @param    string $database
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
-    public function db_select( $database = '' )
+    public function select( $database = '' )
     {
         if( $database === '' )
         {
             $database = $this->database;
         }
 
-        if( mysql_select_db( $database, $this->conn_id ) )
+        if( mysql_select_db( $database, $this->id_connection ) )
         {
             $this->database = $database;
 
@@ -187,15 +189,14 @@ class Driver extends \O2System\O2DB
      * Keep / reestablish the db connection if no queries have been
      * sent for a length of time exceeding the server's idle timeout
      *
-     * @access public
-     *
-     * @return    void
+     * @access  public
+     * @return  void
      */
     public function reconnect()
     {
-        if( mysql_ping( $this->conn_id ) === FALSE )
+        if( mysql_ping( $this->id_connection ) === FALSE )
         {
-            $this->conn_id = FALSE;
+            $this->id_connection = FALSE;
         }
     }
 
@@ -204,9 +205,8 @@ class Driver extends \O2System\O2DB
     /**
      * Database version number
      *
-     * @access public
-     *
-     * @return    string
+     * @access  public
+     * @return  string
      */
     public function version()
     {
@@ -215,7 +215,7 @@ class Driver extends \O2System\O2DB
             return $this->data_cache[ 'version' ];
         }
 
-        if( ! $this->conn_id OR ( $version = mysql_get_server_info( $this->conn_id ) ) === FALSE )
+        if( ! $this->id_connection OR ( $version = mysql_get_server_info( $this->id_connection ) ) === FALSE )
         {
             return FALSE;
         }
@@ -228,11 +228,10 @@ class Driver extends \O2System\O2DB
     /**
      * Begin Transaction
      *
-     * @access public
+     * @param   bool $test_mode
      *
-     * @param    bool $test_mode
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_begin( $test_mode = FALSE )
     {
@@ -257,9 +256,8 @@ class Driver extends \O2System\O2DB
     /**
      * Commit Transaction
      *
-     * @access public
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_commit()
     {
@@ -280,9 +278,8 @@ class Driver extends \O2System\O2DB
     /**
      * Rollback Transaction
      *
-     * @access public
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_rollback()
     {
@@ -303,13 +300,12 @@ class Driver extends \O2System\O2DB
     /**
      * Affected Rows
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function affected_rows()
     {
-        return mysql_affected_rows( $this->conn_id );
+        return mysql_affected_rows( $this->id_connection );
     }
 
     // --------------------------------------------------------------------
@@ -317,13 +313,12 @@ class Driver extends \O2System\O2DB
     /**
      * Insert ID
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function insert_id()
     {
-        return mysql_insert_id( $this->conn_id );
+        return mysql_insert_id( $this->id_connection );
     }
 
     // --------------------------------------------------------------------
@@ -331,11 +326,10 @@ class Driver extends \O2System\O2DB
     /**
      * Returns an object with field data
      *
-     * @access protected
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    array
+     * @access  protected
+     * @return  array
      */
     public function field_data( $table )
     {
@@ -345,22 +339,22 @@ class Driver extends \O2System\O2DB
         }
         $query = $query->result_object();
 
-        $retval = array();
+        $result = array();
         for( $i = 0, $c = count( $query ); $i < $c; $i++ )
         {
-            $retval[ $i ] = new \stdClass();
-            $retval[ $i ]->name = $query[ $i ]->Field;
+            $result[ $i ] = new \stdClass();
+            $result[ $i ]->name = $query[ $i ]->Field;
 
             sscanf( $query[ $i ]->Type, '%[a-z](%d)',
-                    $retval[ $i ]->type,
-                    $retval[ $i ]->max_length
+                    $result[ $i ]->type,
+                    $result[ $i ]->max_length
             );
 
-            $retval[ $i ]->default = $query[ $i ]->Default;
-            $retval[ $i ]->primary_key = (int)( $query[ $i ]->Key === 'PRI' );
+            $result[ $i ]->default = $query[ $i ]->Default;
+            $result[ $i ]->primary_key = (int)( $query[ $i ]->Key === 'PRI' );
         }
 
-        return $retval;
+        return $result;
     }
 
     // --------------------------------------------------------------------
@@ -371,13 +365,12 @@ class Driver extends \O2System\O2DB
      * Returns an array containing code and message of the last
      * database error that has occured.
      *
-     * @access protected
-     *
-     * @return    array
+     * @access  protected
+     * @return  array
      */
     public function error()
     {
-        return array( 'code' => mysql_errno( $this->conn_id ), 'message' => mysql_error( $this->conn_id ) );
+        return array( 'code' => mysql_errno( $this->id_connection ), 'message' => mysql_error( $this->id_connection ) );
     }
 
     // --------------------------------------------------------------------
@@ -385,15 +378,14 @@ class Driver extends \O2System\O2DB
     /**
      * Set client character set
      *
-     * @access public
+     * @param   string $charset
      *
-     * @param    string $charset
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
-    protected function _db_set_charset( $charset )
+    protected function _set_charset( $charset )
     {
-        return mysql_set_charset( $charset, $this->conn_id );
+        return mysql_set_charset( $charset, $this->id_connection );
     }
 
     // --------------------------------------------------------------------
@@ -401,15 +393,14 @@ class Driver extends \O2System\O2DB
     /**
      * Execute the query
      *
-     * @access public
+     * @param   string $sql An SQL query
      *
-     * @param    string $sql an SQL query
-     *
-     * @return    mixed
+     * @access  public
+     * @return  mixed
      */
     protected function _execute( $sql )
     {
-        return mysql_query( $this->_prep_query( $sql ), $this->conn_id );
+        return mysql_query( $this->_prep_query( $sql ), $this->id_connection );
     }
 
     // --------------------------------------------------------------------
@@ -419,11 +410,10 @@ class Driver extends \O2System\O2DB
      *
      * If needed, each database adapter can prep the query string
      *
-     * @access protected
+     * @param   string $sql An SQL query
      *
-     * @param    string $sql an SQL query
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _prep_query( $sql )
     {
@@ -442,15 +432,14 @@ class Driver extends \O2System\O2DB
     /**
      * Platform-dependant string escape
      *
-     * @access protected
+     * @param   string $string
      *
-     * @param    string
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
-    protected function _escape_str( $str )
+    protected function _escape_string( $string )
     {
-        return mysql_real_escape_string( $str, $this->conn_id );
+        return mysql_real_escape_string( $string, $this->id_connection );
     }
 
     // --------------------------------------------------------------------
@@ -460,19 +449,18 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific query string so that the table names can be fetched
      *
-     * @access protected
+     * @param   bool $prefix_limit
      *
-     * @param    bool $prefix_limit
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _list_tables( $prefix_limit = FALSE )
     {
         $sql = 'SHOW TABLES FROM ' . $this->escape_identifiers( $this->database );
 
-        if( $prefix_limit !== FALSE && $this->db_prefix !== '' )
+        if( $prefix_limit !== FALSE && $this->prefix_table !== '' )
         {
-            return $sql . " LIKE '" . $this->escape_like_str( $this->db_prefix ) . "%'";
+            return $sql . " LIKE '" . $this->escape_like_string( $this->prefix_table ) . "%'";
         }
 
         return $sql;
@@ -485,11 +473,10 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific query string so that the column names can be fetched
      *
-     * @access protected
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _list_columns( $table = '' )
     {
@@ -504,18 +491,17 @@ class Driver extends \O2System\O2DB
      * Groups tables in FROM clauses if needed, so there is no confusion
      * about operator precedence.
      *
-     * @access protected
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _from_tables()
     {
-        if( ! empty( $this->qb_join ) && count( $this->qb_from ) > 1 )
+        if( ! empty( $this->_join ) && count( $this->_from ) > 1 )
         {
-            return '(' . implode( ', ', $this->qb_from ) . ')';
+            return '(' . implode( ', ', $this->_from ) . ')';
         }
 
-        return implode( ', ', $this->qb_from );
+        return implode( ', ', $this->_from );
     }
 
     // --------------------------------------------------------------------
@@ -523,18 +509,14 @@ class Driver extends \O2System\O2DB
     /**
      * Close DB Connection
      *
-     * @access protected
-     *
-     * @return    void
+     * @access  protected
+     * @return  void
      */
     protected function _close()
     {
         // Error suppression to avoid annoying E_WARNINGs in cases
         // where the connection has already been closed for some reason.
-        @mysql_close( $this->conn_id );
+        @mysql_close( $this->id_connection );
     }
 
 }
-
-/* End of file Driver.php */
-/* Location: ./o2system/libraries/database/drivers/MySQL/Driver.php */

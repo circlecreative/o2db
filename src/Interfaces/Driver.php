@@ -41,8 +41,6 @@ namespace O2System\O2DB\Interfaces;
 
 // ------------------------------------------------------------------------
 
-use O2System\Core\Gears\Logger;
-
 /**
  * Database Connector Driver Class
  *
@@ -56,144 +54,143 @@ use O2System\Core\Gears\Logger;
  * @subpackage     Drivers
  * @category       Database
  * @author         Circle Creative Developer Team
- * @link           
+ * @link
  */
-abstract class Driver
+abstract class Driver extends Query
 {
+    /**
+     * Database driver
+     *
+     * @type    string
+     */
+    public $driver = NULL;
+
+
+    /**
+     * Database sub driver
+     *
+     * @type    string
+     */
+    public $sub_driver = NULL;
 
     /**
      * Data Source Name / Connect string
      *
-     * @var    string
+     * @type    string
      */
     public $dsn;
 
     /**
      * Username
      *
-     * @var    string
+     * @type    string
      */
     public $username;
 
     /**
      * Password
      *
-     * @var    string
+     * @type    string
      */
     public $password;
 
     /**
      * Hostname
      *
-     * @var    string
+     * @type    string
      */
     public $hostname;
 
     /**
-     * Database name
-     *
-     * @var    string
-     */
-    public $database;
-
-    /**
-     * Database driver
-     *
-     * @var    string
-     */
-    public $dbdriver = 'mysqli';
-
-    /**
-     * Sub-driver
-     *
-     * @used-by    O2System\Libraries\DB_pdo_driver
-     * @var    string
-     */
-    public $subdriver;
-
-    /**
-     * Table prefix
-     *
-     * @var    string
-     */
-    public $dbprefix = '';
-
-    /**
-     * Character set
-     *
-     * @var    string
-     */
-    public $char_set = 'utf8';
-
-    /**
-     * Collation
-     *
-     * @var    string
-     */
-    public $dbcollat = 'utf8_general_ci';
-
-    /**
-     * Encryption flag/data
-     *
-     * @var    mixed
-     */
-    public $encrypt = FALSE;
-
-    /**
-     * Swap Prefix
-     *
-     * @var    string
-     */
-    public $swap_pre = '';
-
-    /**
      * Database port
      *
-     * @var    int
+     * @type    int
      */
     public $port = '';
 
     /**
+     * Database name
+     *
+     * @type    string
+     */
+    public $database;
+
+    /**
+     * Character set
+     *
+     * @type    string
+     */
+    public $charset = 'utf8';
+
+    /**
+     * Collation
+     *
+     * @type    string
+     */
+    public $collation = 'utf8_general_ci';
+
+    /**
+     * Encryption flag/data
+     *
+     * @type    mixed
+     */
+    public $encrypt = FALSE;
+
+    /**
+     * Table prefix
+     *
+     * @type    string
+     */
+    public $prefix_table = '';
+
+    /**
+     * Swap Prefix
+     *
+     * @type    string
+     */
+    public $prefix_swap = '';
+
+    /**
      * Persistent connection flag
      *
-     * @var    bool
+     * @type    bool
      */
-    public $pconnect = FALSE;
+    public $persistent = FALSE;
 
     /**
      * Connection ID
      *
-     * @var    object|resource
+     * @type    object|resource
      */
-    public $conn_id = FALSE;
+    public $id_connection = FALSE;
 
     /**
      * Result ID
      *
-     * @var    object|resource
+     * @type    object|resource
      */
-    public $result_id = FALSE;
+    public $id_result = FALSE;
 
     /**
      * Debug flag
      *
      * Whether to display error messages.
      *
-     * @var    bool
+     * @type    bool
      */
-    public $db_debug = FALSE;
+    public $debug_enabled = FALSE;
 
     /**
      * Benchmark time
      *
-     * @var    int
+     * @type    int
      */
     public $benchmark = 0;
 
     /**
      * Executed queries count
      *
-     * @var    int
+     * @type    int
      */
     public $query_count = 0;
 
@@ -202,7 +199,7 @@ abstract class Driver
      *
      * Character used to identify values in a prepared statement.
      *
-     * @var    string
+     * @type    string
      */
     public $bind_marker = '?';
 
@@ -211,7 +208,7 @@ abstract class Driver
      *
      * Whether to keep an in-memory history of queries for debugging purposes.
      *
-     * @var    bool
+     * @type    bool
      */
     public $save_queries = TRUE;
 
@@ -219,7 +216,7 @@ abstract class Driver
      * Queries list
      *
      * @see    O2System\Libraries\DB_driver::$save_queries
-     * @var    string[]
+     * @type    string[]
      */
     public $queries = array();
 
@@ -228,7 +225,7 @@ abstract class Driver
      *
      * A list of times that queries took to execute.
      *
-     * @var    array
+     * @type    array
      */
     public $query_times = array();
 
@@ -237,28 +234,28 @@ abstract class Driver
      *
      * An internal generic value cache.
      *
-     * @var    array
+     * @type    array
      */
     public $data_cache = array();
 
     /**
      * Transaction enabled flag
      *
-     * @var    bool
+     * @type    bool
      */
     public $trans_enabled = TRUE;
 
     /**
      * Strict transaction mode flag
      *
-     * @var    bool
+     * @type    bool
      */
     public $trans_strict = TRUE;
 
     /**
      * Transaction depth level
      *
-     * @var    int
+     * @type    int
      */
     protected $_trans_depth = 0;
 
@@ -267,7 +264,7 @@ abstract class Driver
      *
      * Used with transactions to determine if a rollback should occur.
      *
-     * @var    bool
+     * @type    bool
      */
     protected $_trans_status = TRUE;
 
@@ -276,43 +273,14 @@ abstract class Driver
      *
      * Used with transactions to determine if a transaction has failed.
      *
-     * @var    bool
+     * @type    bool
      */
     protected $_trans_failure = FALSE;
 
     /**
-     * Cache On flag
-     *
-     * @var    bool
-     */
-    public $cache_on = FALSE;
-
-    /**
-     * Cache directory path
-     *
-     * @var    bool
-     */
-    public $cachedir = '';
-
-    /**
-     * Cache auto-delete flag
-     *
-     * @var    bool
-     */
-    public $cache_autodel = FALSE;
-
-    /**
-     * DB Cache object
-     *
-     * @see    O2System\Libraries\DB_cache
-     * @var    object
-     */
-    public $CACHE;
-
-    /**
      * Protect identifiers flag
      *
-     * @var    bool
+     * @type    bool
      */
     protected $_protect_identifiers = TRUE;
 
@@ -321,37 +289,37 @@ abstract class Driver
      *
      * Identifiers that must NOT be escaped.
      *
-     * @var    string[]
+     * @type    string[]
      */
     protected $_reserved_identifiers = array( '*' );
 
     /**
      * Identifier escape character
      *
-     * @var    string
+     * @type    string
      */
-    protected $_escape_char = '"';
+    protected $_escape_character = '"';
 
     /**
      * ESCAPE statement string
      *
-     * @var    string
+     * @type    string
      */
-    protected $_like_escape_str = " ESCAPE '%s' ";
+    protected $_like_escape_string = " ESCAPE '%s' ";
 
     /**
      * ESCAPE character
      *
-     * @var    string
+     * @type    string
      */
-    protected $_like_escape_chr = '!';
+    protected $_like_escape_character = '!';
 
     /**
-     * ORDER BY random keyword
+     * ORDER BY random keywords
      *
-     * @var    array
+     * @type    array
      */
-    protected $_random_keyword = array( 'RAND()', 'RAND(%d)' );
+    protected $_random_keywords = array( 'RAND()', 'RAND(%d)' );
 
     /**
      * COUNT string
@@ -359,7 +327,7 @@ abstract class Driver
      * @used-by    O2System\Libraries\DB_driver::count_all()
      * @used-by    O2System\Libraries\DB_query_builder::count_all_results()
      *
-     * @var    string
+     * @type    string
      */
     protected $_count_string = 'SELECT COUNT(*) AS ';
 
@@ -369,8 +337,6 @@ abstract class Driver
      * Class constructor
      *
      * @param    array $params
-     *
-     * @return    void
      */
     public function __construct( $params )
     {
@@ -382,8 +348,7 @@ abstract class Driver
             }
         }
 
-        Logger::info( 'Database Driver Class Initialized' );
-        //log_message( 'info', 'Database Driver Class Initialized' );
+        $this->driver = str_replace( [ 'O2System\O2DB\\Drivers\\', '\\Driver' ], '', get_called_class() );
     }
 
     // --------------------------------------------------------------------
@@ -401,7 +366,7 @@ abstract class Driver
          * Depending on the database driver, conn_id can be either
          * boolean TRUE, a resource or an object.
          */
-        if( $this->conn_id )
+        if( $this->id_connection )
         {
             return TRUE;
         }
@@ -409,10 +374,10 @@ abstract class Driver
         // ----------------------------------------------------------------
 
         // Connect to the database and set the connection ID
-        $this->conn_id = $this->db_connect( $this->pconnect );
+        $this->id_connection = $this->connect( $this->persistent );
 
         // No connection resource? Check if there is a failover else throw an error
-        if( ! $this->conn_id )
+        if( ! $this->id_connection )
         {
             // Check if there is a failover set
             if( ! empty( $this->failover ) && is_array( $this->failover ) )
@@ -427,10 +392,10 @@ abstract class Driver
                     }
 
                     // Try to connect
-                    $this->conn_id = $this->db_connect( $this->pconnect );
+                    $this->id_connection = $this->connect( $this->persistent );
 
                     // If a connection is made break the foreach loop
-                    if( $this->conn_id )
+                    if( $this->id_connection )
                     {
                         break;
                     }
@@ -438,12 +403,11 @@ abstract class Driver
             }
 
             // We still don't have a connection?
-            if( ! $this->conn_id )
+            if( ! $this->id_connection )
             {
                 Logger::error( 'Unable to connect to the database' );
-                //log_message( 'error', 'Unable to connect to the database' );
 
-                if( $this->db_debug )
+                if( $this->debug_enabled )
                 {
                     $this->display_error( 'db_unable_to_connect' );
                 }
@@ -453,7 +417,7 @@ abstract class Driver
         }
 
         // Now we set the character set and that's all
-        return $this->db_set_charset( $this->charset );
+        return $this->set_charset( $this->charset );
     }
 
     // --------------------------------------------------------------------
@@ -465,7 +429,7 @@ abstract class Driver
      *
      * @return      mixed
      */
-    public function db_connect()
+    public function connect()
     {
         return TRUE;
     }
@@ -477,9 +441,9 @@ abstract class Driver
      *
      * @return    mixed
      */
-    public function db_pconnect()
+    public function pconnect()
     {
-        return $this->db_connect( TRUE );
+        return $this->connect( TRUE );
     }
 
     // --------------------------------------------------------------------
@@ -502,37 +466,22 @@ abstract class Driver
     // --------------------------------------------------------------------
 
     /**
-     * Select database
-     *
-     * This is just a dummy method to allow drivers without such
-     * functionality to not declare it, while others will override it.
-     *
-     * @return      bool
-     */
-    public function db_select()
-    {
-        return TRUE;
-    }
-
-    // --------------------------------------------------------------------
-
-    /**
      * Set client character set
      *
      * @param    string
      *
-     * @return    bool
+     * @return bool
+     * @throws \Exception
      */
-    public function db_set_charset( $charset )
+    public function set_charset( $charset )
     {
-        if( method_exists( $this, '_db_set_charset' ) && ! $this->_db_set_charset( $charset ) )
+        if( method_exists( $this, '_set_charset' ) && ! $this->_set_charset( $charset ) )
         {
             Logger::error( 'Unable to set database connection charset: ' . $charset );
-            //log_message( 'error', 'Unable to set database connection charset: ' . $charset );
 
-            if( $this->db_debug )
+            if( $this->debug_enabled )
             {
-                $this->display_error( 'db_unable_to_set_charset', $charset );
+                throw new \Exception( 'Unable to set database connection charset: ' . $charset );
             }
 
             return FALSE;
@@ -550,7 +499,7 @@ abstract class Driver
      */
     public function platform()
     {
-        return $this->db_driver;
+        return $this->driver;
     }
 
     // --------------------------------------------------------------------
@@ -561,7 +510,8 @@ abstract class Driver
      * Returns a string containing the version of the database being used.
      * Most drivers will override this method.
      *
-     * @return    string
+     * @return string
+     * @throws \Exception
      */
     public function version()
     {
@@ -572,7 +522,12 @@ abstract class Driver
 
         if( FALSE === ( $sql = $this->_version() ) )
         {
-            return ( $this->db_debug ) ? $this->display_error( 'db_unsupported_function' ) : FALSE;
+            if( $this->debug_enabled )
+            {
+                throw new \Exception( 'This feature is not available for the database you are using.' );
+            }
+
+            return FALSE;
         }
 
         $query = $this->query( $sql )->row();
@@ -600,14 +555,15 @@ abstract class Driver
      * Accepts an SQL string as input and returns a result object upon
      * successful execution of a "read" type query. Returns boolean TRUE
      * upon successful execution of a "write" type query. Returns boolean
-     * FALSE upon failure, and if the $db_debug variable is set to TRUE
+     * FALSE upon failure, and if the $debug_mode variable is set to TRUE
      * will raise an error.
      *
-     * @param    string $sql
-     * @param    array  $binds         = FALSE        An array of binding data
-     * @param    bool   $return_object = NULL
+     * @param    string  $sql
+     * @param array|bool $binds         = FALSE        An array of binding data
+     * @param    bool    $return_object = NULL
      *
-     * @return    mixed
+     * @return mixed
+     * @throws \Exception
      */
     public function query( $sql, $binds = FALSE, $return_object = NULL )
     {
@@ -615,9 +571,12 @@ abstract class Driver
         {
             Logger::error( 'Invalid query: ' . $sql );
 
-            //log_message( 'error', 'Invalid query: ' . $sql );
+            if( $this->debug_enabled )
+            {
+                throw new \Exception( 'The query you submitted is not valid.' );
+            }
 
-            return ( $this->db_debug ) ? $this->display_error( 'db_invalid_query' ) : FALSE;
+            return FALSE;
         }
         elseif( ! is_bool( $return_object ) )
         {
@@ -625,27 +584,15 @@ abstract class Driver
         }
 
         // Verify table prefix and replace if necessary
-        if( $this->db_prefix !== '' && $this->swap_pre !== '' && $this->db_prefix !== $this->swap_pre )
+        if( $this->prefix_table !== '' && $this->prefix_swap !== '' && $this->prefix_table !== $this->prefix_swap )
         {
-            $sql = preg_replace( '/(\W)' . $this->swap_pre . '(\S+?)/', '\\1' . $this->db_prefix . '\\2', $sql );
+            $sql = preg_replace( '/(\W)' . $this->prefix_swap . '(\S+?)/', '\\1' . $this->prefix_table . '\\2', $sql );
         }
 
         // Compile binds if needed
         if( $binds !== FALSE )
         {
             $sql = $this->compile_binds( $sql, $binds );
-        }
-
-        // Is query caching enabled? If the query is a "read type"
-        // we will load the caching class and return the previously
-        // cached query if it exists
-        if( $this->cache_on === TRUE && $return_object === TRUE && $this->_cache_init() )
-        {
-            $this->load_rdriver();
-            if( FALSE !== ( $cache = $this->CACHE->read( $sql ) ) )
-            {
-                return $cache;
-            }
         }
 
         // Save the query for debugging
@@ -658,7 +605,7 @@ abstract class Driver
         $time_start = microtime( TRUE );
 
         // Run the Query
-        if( FALSE === ( $this->result_id = $this->simple_query( $sql ) ) )
+        if( FALSE === ( $this->id_result = $this->simple_query( $sql ) ) )
         {
             if( $this->save_queries === TRUE )
             {
@@ -673,9 +620,8 @@ abstract class Driver
 
             // Log errors
             Logger::error( 'Query error: ' . $error[ 'message' ] . ' - Invalid query: ' . $sql );
-            //log_message( 'error', 'Query error: ' . $error[ 'message' ] . ' - Invalid query: ' . $sql );
 
-            if( $this->db_debug )
+            if( $this->debug_enabled )
             {
                 // We call this function in order to roll-back queries
                 // if transactions are enabled. If we don't call this here
@@ -691,7 +637,7 @@ abstract class Driver
                 }
 
                 // Display errors
-                return $this->display_error( array( 'Error Number: ' . $error[ 'code' ], $error[ 'message' ], $sql ) );
+                throw new \Exception( $error[ 'code' ] . ':' . $error[ 'message' ] . '<br><br>' . $sql );
             }
 
             return FALSE;
@@ -712,58 +658,13 @@ abstract class Driver
         // Will we have a result object instantiated? If not - we'll simply return TRUE
         if( $return_object !== TRUE )
         {
-            // If caching is enabled we'll auto-cleanup any existing files related to this particular URI
-            if( $this->cache_on === TRUE && $this->cache_autodel === TRUE && $this->_cache_init() )
-            {
-                $this->CACHE->delete();
-            }
-
             return TRUE;
         }
 
         // Load and instantiate the result driver
-        $driver = $this->load_rdriver();
-        $RES = new $driver( $this );
+        $result_class_name = 'O2System\\O2DB\\Drivers\\' . ucfirst( $this->driver_name ) . '\\Result';
 
-        // Is query caching enabled? If so, we'll serialize the
-        // result object and save it to a cache file.
-        if( $this->cache_on === TRUE && $this->_cache_init() )
-        {
-            // We'll create a new instance of the result object
-            // only without the platform specific driver since
-            // we can't use it with cached data (the query result
-            // resource ID won't be any good once we've cached the
-            // result object, so we'll have to compile the data
-            // and save it)
-
-            $CR = new \O2System\O2DB\Drivers\Result( $this );
-            //$CR              = new O2System\Libraries\DB_result( $this );
-            $CR->result_object = $RES->result_object();
-            $CR->result_array = $RES->result_array();
-            $CR->num_rows = $RES->num_rows();
-
-            // Reset these since cached objects can not utilize resource IDs.
-            $CR->conn_id = NULL;
-            $CR->result_id = NULL;
-
-            $this->CACHE->write( $sql, $CR );
-        }
-
-        return $RES;
-    }
-
-    // --------------------------------------------------------------------
-
-    /**
-     * Load the result drivers
-     *
-     * @return    string    the name of the result class
-     */
-    public function load_rdriver()
-    {
-        $driver = '\O2System\O2DB\Drivers\\' . ucfirst( $this->db_driver ) . '\\Result';
-
-        return $driver;
+        return new $result_class_name( $this );
     }
 
     // --------------------------------------------------------------------
@@ -780,7 +681,7 @@ abstract class Driver
      */
     public function simple_query( $sql )
     {
-        if( ! $this->conn_id )
+        if( ! $this->id_connection )
         {
             $this->initialize();
         }
@@ -887,8 +788,6 @@ abstract class Driver
             }
 
             Logger::debug( 'DB Transaction Failure' );
-
-            //log_message( 'debug', 'DB Transaction Failure' );
 
             return FALSE;
         }
@@ -1043,28 +942,28 @@ abstract class Driver
      *
      * @return    mixed
      */
-    public function escape( $str )
+    public function escape( $string )
     {
-        if( is_array( $str ) )
+        if( is_array( $string ) )
         {
-            $str = array_map( array( &$this, 'escape' ), $str );
+            $string = array_map( array( &$this, 'escape' ), $string );
 
-            return $str;
+            return $string;
         }
-        elseif( is_string( $str ) OR ( is_object( $str ) && method_exists( $str, '__toString' ) ) )
+        elseif( is_string( $string ) OR ( is_object( $string ) && method_exists( $string, '__toString' ) ) )
         {
-            return "'" . $this->escape_str( $str ) . "'";
+            return "'" . $this->escape_string( $string ) . "'";
         }
-        elseif( is_bool( $str ) )
+        elseif( is_bool( $string ) )
         {
-            return ( $str === FALSE ) ? 0 : 1;
+            return ( $string === FALSE ) ? 0 : 1;
         }
-        elseif( $str === NULL )
+        elseif( $string === NULL )
         {
             return 'NULL';
         }
 
-        return $str;
+        return $string;
     }
 
     // --------------------------------------------------------------------
@@ -1072,39 +971,39 @@ abstract class Driver
     /**
      * Escape String
      *
-     * @param    string|string[] $str  Input string
-     * @param    bool            $like Whether or not the string will be used in a LIKE condition
+     * @param    string|string[] $string Input string
+     * @param    bool            $like   Whether or not the string will be used in a LIKE condition
      *
      * @return    string
      */
-    public function escape_str( $str, $like = FALSE )
+    public function escape_string( $string, $like = FALSE )
     {
-        if( is_array( $str ) )
+        if( is_array( $string ) )
         {
-            foreach( $str as $key => $val )
+            foreach( $string as $key => $val )
             {
-                $str[ $key ] = $this->escape_str( $val, $like );
+                $string[ $key ] = $this->escape_string( $val, $like );
             }
 
-            return $str;
+            return $string;
         }
 
-        $str = $this->_escape_str( $str );
+        $string = $this->_escape_string( $string );
 
         // escape LIKE condition wildcards
         if( $like === TRUE )
         {
             return str_replace(
-                array( $this->_like_escape_chr, '%', '_' ),
+                array( $this->_like_escape_character, '%', '_' ),
                 array(
-                    $this->_like_escape_chr . $this->_like_escape_chr, $this->_like_escape_chr . '%',
-                    $this->_like_escape_chr . '_'
+                    $this->_like_escape_character . $this->_like_escape_character, $this->_like_escape_character . '%',
+                    $this->_like_escape_character . '_'
                 ),
-                $str
+                $string
             );
         }
 
-        return $str;
+        return $string;
     }
 
     // --------------------------------------------------------------------
@@ -1119,9 +1018,9 @@ abstract class Driver
      *
      * @return    mixed
      */
-    public function escape_like_str( $str )
+    public function escape_like_string( $str )
     {
-        return $this->escape_str( $str, TRUE );
+        return $this->escape_string( $str, TRUE );
     }
 
     // --------------------------------------------------------------------
@@ -1133,9 +1032,17 @@ abstract class Driver
      *
      * @return    string
      */
-    protected function _escape_str( $str )
+    protected function _escape_string( $string )
     {
-        return str_replace( "'", "''", remove_invisible_characters( $str ) );
+        $non_displayables[ ] = '/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+/S';    // 00-08, 11, 12, 14-31, 127
+
+        do
+        {
+            $string = preg_replace( $non_displayables, '', $string, -1, $count );
+        }
+        while( $count );
+
+        return str_replace( "'", "''", $string );
     }
 
     // --------------------------------------------------------------------
@@ -1176,10 +1083,7 @@ abstract class Driver
             return 0;
         }
 
-        $query = $this->query( $this->_count_string . $this->escape_identifiers( 'numrows' ) . ' FROM ' . $this->protect_identifiers( $table,
-                                                                                                                                      TRUE,
-                                                                                                                                      NULL,
-                                                                                                                                      FALSE ) );
+        $query = $this->query( $this->_count_string . $this->escape_identifiers( 'numrows' ) . ' FROM ' . $this->protect_identifiers( $table, TRUE, FALSE ) );
         if( $query->num_rows() === 0 )
         {
             return 0;
@@ -1196,9 +1100,10 @@ abstract class Driver
     /**
      * Returns an array of table names
      *
-     * @param    string $constrain_by_prefix = FALSE
+     * @param bool|string $constrain_by_prefix = FALSE
      *
-     * @return    array
+     * @return array
+     * @throws \Exception
      */
     public function list_tables( $constrain_by_prefix = FALSE )
     {
@@ -1210,7 +1115,12 @@ abstract class Driver
 
         if( FALSE === ( $sql = $this->_list_tables( $constrain_by_prefix ) ) )
         {
-            return ( $this->db_debug ) ? $this->display_error( 'db_unsupported_function' ) : FALSE;
+            if( $this->debug_enabled )
+            {
+                throw new \Exception( 'This feature is not available for the database you are using.' );
+            }
+
+            return FALSE;
         }
 
         $this->data_cache[ 'table_names' ] = array();
@@ -1268,7 +1178,8 @@ abstract class Driver
      *
      * @param    string    the table name
      *
-     * @return    array
+     * @return array
+     * @throws \Exception
      */
     public function list_fields( $table )
     {
@@ -1280,7 +1191,12 @@ abstract class Driver
 
         if( FALSE === ( $sql = $this->_list_columns( $table ) ) )
         {
-            return ( $this->db_debug ) ? $this->display_error( 'db_unsupported_function' ) : FALSE;
+            if( $this->debug_enabled )
+            {
+                throw new \Exception( 'This feature is not available for the database you are using.' );
+            }
+
+            return FALSE;
         }
 
         $query = $this->query( $sql );
@@ -1356,7 +1272,10 @@ abstract class Driver
      */
     public function escape_identifiers( $item )
     {
-        if( $this->_escape_char === '' OR empty( $item ) OR in_array( $item, $this->_reserved_identifiers ) )
+        if( $this->_escape_character === '' OR
+            empty( $item ) OR
+            in_array( $item, $this->_reserved_identifiers )
+        )
         {
             return $item;
         }
@@ -1370,8 +1289,10 @@ abstract class Driver
             return $item;
         }
         // Avoid breaking functions and literal values inside queries
-        elseif( ctype_digit( $item ) OR $item[ 0 ] === "'" OR ( $this->_escape_char !== '"' && $item[ 0 ] === '"' ) OR strpos( $item,
-                                                                                                                               '(' ) !== FALSE
+        elseif( ctype_digit( $item ) OR
+                $item[ 0 ] === "'" OR
+                ( $this->_escape_character !== '"' && $item[ 0 ] === '"' ) OR
+                strpos( $item, '(' ) !== FALSE
         )
         {
             return $item;
@@ -1381,19 +1302,19 @@ abstract class Driver
 
         if( empty( $preg_ec ) )
         {
-            if( is_array( $this->_escape_char ) )
+            if( is_array( $this->_escape_character ) )
             {
                 $preg_ec = array(
-                    preg_quote( $this->_escape_char[ 0 ], '/' ),
-                    preg_quote( $this->_escape_char[ 1 ], '/' ),
-                    $this->_escape_char[ 0 ],
-                    $this->_escape_char[ 1 ]
+                    preg_quote( $this->_escape_character[ 0 ], '/' ),
+                    preg_quote( $this->_escape_character[ 1 ], '/' ),
+                    $this->_escape_character[ 0 ],
+                    $this->_escape_character[ 1 ]
                 );
             }
             else
             {
-                $preg_ec[ 0 ] = $preg_ec[ 1 ] = preg_quote( $this->_escape_char, '/' );
-                $preg_ec[ 2 ] = $preg_ec[ 3 ] = $this->_escape_char;
+                $preg_ec[ 0 ] = $preg_ec[ 1 ] = preg_quote( $this->_escape_character, '/' );
+                $preg_ec[ 2 ] = $preg_ec[ 3 ] = $this->_escape_character;
             }
         }
 
@@ -1503,9 +1424,9 @@ abstract class Driver
         }
 
         return 'UPDATE ' . $table . ' SET ' . implode( ', ', $valstr )
-               . $this->_compile_wh( 'qb_where' )
+               . $this->_compile_where( '_where' )
                . $this->_compile_order_by()
-               . ( $this->qb_limit ? ' LIMIT ' . $this->qb_limit : '' );
+               . ( $this->_limit ? ' LIMIT ' . $this->_limit : '' );
     }
 
     // --------------------------------------------------------------------
@@ -1538,8 +1459,8 @@ abstract class Driver
 
         if( empty( $_operators ) )
         {
-            $_les = ( $this->_like_escape_str !== '' )
-                ? '\s+' . preg_quote( trim( sprintf( $this->_like_escape_str, $this->_like_escape_chr ) ), '/' )
+            $_les = ( $this->_like_escape_string !== '' )
+                ? '\s+' . preg_quote( trim( sprintf( $this->_like_escape_string, $this->_like_escape_character ) ), '/' )
                 : '';
             $_operators = array(
                 '\s*(?:<|>|!)?=\s*',        // =, <=, >=, !=
@@ -1569,11 +1490,12 @@ abstract class Driver
      *
      * @param    string $function Function name
      *
-     * @return    mixed
+     * @return mixed
+     * @throws \Exception
      */
     public function call_function( $function )
     {
-        $driver = ( $this->db_driver === 'postgre' ) ? 'pg_' : $this->db_driver . '_';
+        $driver = ( $this->driver === 'postgre' ) ? 'pg_' : $this->driver . '_';
 
         if( FALSE === strpos( $driver, $function ) )
         {
@@ -1582,106 +1504,17 @@ abstract class Driver
 
         if( ! function_exists( $function ) )
         {
-            return ( $this->db_debug ) ? $this->display_error( 'db_unsupported_function' ) : FALSE;
+            if( $this->debug_enabled )
+            {
+                throw new \Exception( 'This feature is not available for the database you are using.' );
+            }
+
+            return FALSE;
         }
 
         return ( func_num_args() > 1 )
             ? call_user_func_array( $function, array_slice( func_get_args(), 1 ) )
             : call_user_func( $function );
-    }
-
-    // --------------------------------------------------------------------
-
-    /**
-     * Set Cache Directory Path
-     *
-     * @param    string    the path to the cache directory
-     *
-     * @return    void
-     */
-    public function cache_set_path( $path = '' )
-    {
-        $this->cache_path = $path;
-    }
-
-    // --------------------------------------------------------------------
-
-    /**
-     * Enable Query Caching
-     *
-     * @return    bool    cache_on value
-     */
-    public function cache_on()
-    {
-        return $this->cache_on = TRUE;
-    }
-
-    // --------------------------------------------------------------------
-
-    /**
-     * Disable Query Caching
-     *
-     * @return    bool    cache_on value
-     */
-    public function cache_off()
-    {
-        return $this->cache_on = FALSE;
-    }
-
-    // --------------------------------------------------------------------
-
-    /**
-     * Delete the cache files associated with a particular URI
-     *
-     * @param    string $segment_one = ''
-     * @param    string $segment_two = ''
-     *
-     * @return    bool
-     */
-    public function cache_delete( $segment_one = '', $segment_two = '' )
-    {
-        return $this->_cache_init()
-            ? $this->CACHE->delete( $segment_one, $segment_two )
-            : FALSE;
-    }
-
-    // --------------------------------------------------------------------
-
-    /**
-     * Delete All cache files
-     *
-     * @return    bool
-     */
-    public function cache_delete_all()
-    {
-        return $this->_cache_init()
-            ? $this->CACHE->delete_all()
-            : FALSE;
-    }
-
-    // --------------------------------------------------------------------
-
-    /**
-     * Initialize the Cache Class
-     *
-     * @return    bool
-     */
-    protected function _cache_init()
-    {
-        if( ! class_exists( '\O2System\O2DB\Drivers\Cache', FALSE ) )
-            //if ( ! class_exists( 'O2System\Libraries\DB_Cache', FALSE ) )
-        {
-            require_once( SYSTEMPATH . 'libraries/DB/Drivers/Cache.php' );
-            //require_once( BASEPATH . 'database/DB_cache.php' );
-        }
-        elseif( is_object( $this->CACHE ) )
-        {
-            return TRUE;
-        }
-
-        $this->CACHE = new \O2System\O2DB\Drivers\Cache( $this ); // pass db object to support multiple db connections and returned db objects
-        //$this->CACHE = new O2System\Libraries\DB_Cache( $this ); // pass db object to support multiple db connections and returned db objects
-        return TRUE;
     }
 
     // --------------------------------------------------------------------
@@ -1693,10 +1526,10 @@ abstract class Driver
      */
     public function close()
     {
-        if( $this->conn_id )
+        if( $this->id_connection )
         {
             $this->_close();
-            $this->conn_id = FALSE;
+            $this->id_connection = FALSE;
         }
     }
 
@@ -1711,72 +1544,7 @@ abstract class Driver
      */
     protected function _close()
     {
-        $this->conn_id = FALSE;
-    }
-
-    // --------------------------------------------------------------------
-
-    /**
-     * Display an error message
-     *
-     * @param    string    the error message
-     * @param    string    any "swap" values
-     * @param    bool      whether to localize the message
-     *
-     * @return    string    sends the application/views/errors/error_db.php template
-     */
-    public function display_error( $error = '', $swap = '', $native = FALSE )
-    {
-        $LANG =& \O2System\Core\Loader::core( 'lang' );
-        $LANG->load( 'db' );
-        //$LANG =& load_class( 'Lang', 'core' );
-        //$LANG->load( 'db' );
-
-        $heading = $LANG->line( 'db_error_heading' );
-
-        if( $native === TRUE )
-        {
-            $message = (array)$error;
-        }
-        else
-        {
-            $message = is_array( $error ) ? $error : array( str_replace( '%s', $swap, $LANG->line( $error ) ) );
-        }
-
-        // Find the most likely culprit of the error by going through
-        // the backtrace until the source file is no longer in the
-        // database folder.
-        $trace = debug_backtrace();
-        foreach( $trace as $call )
-        {
-            if( isset( $call[ 'file' ], $call[ 'class' ] ) )
-            {
-                // We'll need this on Windows, as APPPATH and BASEPATH will always use forward slashes
-                if( DIRECTORY_SEPARATOR !== '/' )
-                {
-                    $call[ 'file' ] = str_replace( '\\', '/', $call[ 'file' ] );
-                }
-
-                if( strpos( $call[ 'file' ], BASEPATH . 'database' ) === FALSE && strpos( $call[ 'class' ],
-                                                                                          'Loader' ) === FALSE
-                )
-                {
-                    // Found it - use a relative path for safety
-                    $message[ ] = 'Filename: ' . str_replace( array( APPSPATH, BASEPATH ), '', $call[ 'file' ] );
-                    $message[ ] = 'Line Number: ' . $call[ 'line' ];
-                    break;
-                }
-            }
-        }
-
-        //print_out($heading);
-
-        //$error =& \O2System\Core\Autoloader::core( 'error' );
-        //$error->show( $heading, $message, 'error_db' );
-        //$error =& load_class( 'Exceptions', 'core' );
-        //echo $error->
-        Exception::show( $message, 'error_db', $heading );
-        exit( 8 ); // EXIT_DATABASE
+        $this->id_connection = FALSE;
     }
 
     // --------------------------------------------------------------------
@@ -1874,7 +1642,7 @@ abstract class Driver
             // Does the first segment of the exploded item match
             // one of the aliases previously identified? If so,
             // we have nothing more to do other than escape the item
-            if( in_array( $parts[ 0 ], $this->qb_aliased_tables ) )
+            if( in_array( $parts[ 0 ], $this->_aliased_tables ) )
             {
                 if( $protect_identifiers === TRUE )
                 {
@@ -1893,7 +1661,7 @@ abstract class Driver
             }
 
             // Is there a table prefix defined in the config file? If not, no need to do anything
-            if( $this->db_prefix !== '' )
+            if( $this->prefix_table !== '' )
             {
                 // We now add the table prefix based on some logic.
                 // Do we have 4 segments (hostname.database.table.column)?
@@ -1923,15 +1691,15 @@ abstract class Driver
                 }
 
                 // Verify table prefix and replace if necessary
-                if( $this->swap_pre !== '' && strpos( $parts[ $i ], $this->swap_pre ) === 0 )
+                if( $this->prefix_swap !== '' && strpos( $parts[ $i ], $this->prefix_swap ) === 0 )
                 {
-                    $parts[ $i ] = preg_replace( '/^' . $this->swap_pre . '(\S+?)/', $this->db_prefix . '\\1',
+                    $parts[ $i ] = preg_replace( '/^' . $this->prefix_swap . '(\S+?)/', $this->prefix_table . '\\1',
                                                  $parts[ $i ] );
                 }
                 // We only add the table prefix if it does not already exist
-                elseif( strpos( $parts[ $i ], $this->db_prefix ) !== 0 )
+                elseif( strpos( $parts[ $i ], $this->prefix_table ) !== 0 )
                 {
-                    $parts[ $i ] = $this->db_prefix . $parts[ $i ];
+                    $parts[ $i ] = $this->prefix_table . $parts[ $i ];
                 }
 
                 // Put the parts back together
@@ -1947,17 +1715,17 @@ abstract class Driver
         }
 
         // Is there a table prefix? If not, no need to insert it
-        if( $this->db_prefix !== '' )
+        if( $this->prefix_table !== '' )
         {
             // Verify table prefix and replace if necessary
-            if( $this->swap_pre !== '' && strpos( $item, $this->swap_pre ) === 0 )
+            if( $this->prefix_swap !== '' && strpos( $item, $this->prefix_swap ) === 0 )
             {
-                $item = preg_replace( '/^' . $this->swap_pre . '(\S+?)/', $this->db_prefix . '\\1', $item );
+                $item = preg_replace( '/^' . $this->prefix_swap . '(\S+?)/', $this->prefix_table . '\\1', $item );
             }
             // Do we prefix an item with no segments?
-            elseif( $prefix_single === TRUE && strpos( $item, $this->db_prefix ) !== 0 )
+            elseif( $prefix_single === TRUE && strpos( $item, $this->prefix_table ) !== 0 )
             {
-                $item = $this->db_prefix . $item;
+                $item = $this->prefix_table . $item;
             }
         }
 

@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,37 +29,47 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
-namespace O2System\O2DB\Drivers\SQLite;
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
+// ------------------------------------------------------------------------
 
+namespace O2System\O2DB\Drivers\Sqlite;
 
-class Forge extends \O2System\O2DB\Interfaces\Forge
+// ------------------------------------------------------------------------
+
+use O2System\O2DB\Interfaces\Forge as ForgeInterface;
+
+/**
+ * SQLite Database Forge
+ *
+
+ * @author      Circle Creative Developer Team
+ */
+class Forge extends ForgeInterface
 {
-
     /**
      * CREATE TABLE IF statement
      *
-     * @var    string
+     * @access  protected
+     * @type    string
      */
     protected $_create_table_if = FALSE;
 
     /**
      * UNSIGNED support
      *
-     * @var    bool|array
+     * @access  protected
+     * @type    bool|array
      */
     protected $_unsigned = FALSE;
 
     /**
      * NULL value representation in CREATE/ALTER TABLE statements
      *
-     * @var    string
+     * @type    string
      */
     protected $_null = 'NULL';
 
@@ -68,11 +78,10 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
     /**
      * Create database
      *
-     * @access public
+     * @param   string $db_name (ignored)
      *
-     * @param    string $db_name (ignored)
-     *
-     * @return    bool
+     * @access  protected
+     * @return  bool
      */
     public function create_database( $db_name = '' )
     {
@@ -86,24 +95,29 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
     /**
      * Drop database
      *
-     * @access public
+     * @param   string $db_name (ignored)
      *
-     * @param    string $db_name (ignored)
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
+     * @throws  \Exception
      */
     public function drop_database( $db_name = '' )
     {
-        if( ! file_exists( $this->db->database ) OR ! @unlink( $this->db->database ) )
+        if( ! file_exists( $this->_driver->database ) OR ! @unlink( $this->_driver->database ) )
         {
-            return ( $this->db->db_debug ) ? $this->db->display_error( 'db_unable_to_drop' ) : FALSE;
+            if( $this->_driver->debug_enabled )
+            {
+                throw new \Exception( 'Unable to drop the specified database.' );
+            }
+
+            return FALSE;
         }
-        elseif( ! empty( $this->db->data_cache[ 'db_names' ] ) )
+        elseif( ! empty( $this->_driver->data_cache[ 'db_names' ] ) )
         {
-            $key = array_search( strtolower( $this->db->database ), array_map( 'strtolower', $this->db->data_cache[ 'db_names' ] ), TRUE );
+            $key = array_search( strtolower( $this->_driver->database ), array_map( 'strtolower', $this->_driver->data_cache[ 'db_names' ] ), TRUE );
             if( $key !== FALSE )
             {
-                unset( $this->db->data_cache[ 'db_names' ][ $key ] );
+                unset( $this->_driver->data_cache[ 'db_names' ][ $key ] );
             }
         }
 
@@ -115,15 +129,14 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
     /**
      * ALTER TABLE
      *
-     * @access  public
-     *
      * @todo    implement drop_column(), modify_column()
      *
-     * @param    string $alter_type ALTER type
-     * @param    string $table      Table name
-     * @param    mixed  $field      Column definition
+     * @param   string $alter_type ALTER type
+     * @param   string $table      Table name
+     * @param   mixed  $field      Column definition
      *
-     * @return    string|string[]
+     * @access  protected
+     * @return  string|string[]
      */
     protected function _alter_table( $alter_type, $table, $field )
     {
@@ -150,15 +163,14 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
     /**
      * Process column
      *
-     * @access protected
+     * @param   array   $field
      *
-     * @param    array $field
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _process_column( $field )
     {
-        return $this->db->escape_identifiers( $field[ 'name' ] )
+        return $this->_driver->escape_identifiers( $field[ 'name' ] )
                . ' ' . $field[ 'type' ]
                . $field[ 'auto_increment' ]
                . $field[ 'null' ]
@@ -173,11 +185,10 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
      *
      * Performs a data type mapping between different databases.
      *
-     * @access protected
+     * @param   array   &$attributes
      *
-     * @param    array &$attributes
-     *
-     * @return    void
+     * @access  protected
+     * @return  void
      */
     protected function _attr_type( &$attributes )
     {
@@ -198,12 +209,11 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
     /**
      * Field attribute AUTO_INCREMENT
      *
-     * @access protected
+     * @param   array   &$attributes
+     * @param   array   &$field
      *
-     * @param    array &$attributes
-     * @param    array &$field
-     *
-     * @return    void
+     * @access  protected
+     * @return  void
      */
     protected function _attr_auto_increment( &$attributes, &$field )
     {
@@ -220,6 +230,3 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
     }
 
 }
-
-/* End of file Forge.php */
-/* Location: ./o2system/libraries/database/drivers/SQLite/Forge.php */

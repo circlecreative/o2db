@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,28 +29,26 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
+// ------------------------------------------------------------------------
 
 namespace O2System\O2DB\Drivers\Cubrid;
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
+
+// ------------------------------------------------------------------------
+
+use O2System\O2DB\Interfaces\Utility as UtilityInterface;
 
 /**
- * Database Driver Class
+ * Cubrid Database Utility
  *
- * @package        O2System
- * @subpackage     Drivers
- * @category       Database
- * @author         Steeven Andrian Salim
- * @link           http://o2system.center/framework/user-guide/libraries/database.htm
+ * @author      Circle Creative Developer Team
  */
-class Utility extends \O2System\O2DB\Interfaces\Utility
+class Utility extends UtilityInterface
 {
-
     /**
      * List databases
      *
@@ -60,12 +58,12 @@ class Utility extends \O2System\O2DB\Interfaces\Utility
      */
     public function list_databases()
     {
-        if( isset( $this->db->data_cache[ 'db_names' ] ) )
+        if( isset( $this->_driver->data_cache[ 'db_names' ] ) )
         {
-            return $this->db->data_cache[ 'db_names' ];
+            return $this->_driver->data_cache[ 'db_names' ];
         }
 
-        return $this->db->data_cache[ 'db_names' ] = cubrid_list_dbs( $this->db->conn_id );
+        return $this->_driver->data_cache[ 'db_names' ] = cubrid_list_dbs( $this->_driver->conn_id );
     }
 
     // --------------------------------------------------------------------
@@ -73,20 +71,17 @@ class Utility extends \O2System\O2DB\Interfaces\Utility
     /**
      * CUBRID Export
      *
-     * @access protected
+     * @param   array   $params Preferences
      *
-     * @param    array    Preferences
-     *
-     * @return    mixed
+     * @access  protected
+     * @return  mixed
+     * @throws  \Exception
      */
     protected function _backup( $params = array() )
     {
         // No SQL based support in CUBRID as of version 8.4.0. Database or
         // table backup can be performed using CUBRID Manager
         // database administration tool.
-        return $this->db->display_error( 'db_unsupported_feature' );
+        throw new \Exception('Unsupported feature of the database platform you are using.');
     }
 }
-
-/* End of file Utility.php */
-/* Location: ./o2system/libraries/database/drivers/Cubrid/Utility.php */

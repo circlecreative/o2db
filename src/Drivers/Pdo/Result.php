@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,25 +29,31 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
-namespace O2System\O2DB\Drivers\PDO;
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
+// ------------------------------------------------------------------------
 
+namespace O2System\O2DB\Drivers\Pdo;
 
-class Result extends \O2System\O2DB\Interfaces\Result
+// ------------------------------------------------------------------------
+
+use O2System\O2DB\Interfaces\Result as ResultInterface;
+
+/**
+ * PDO Database Result
+ *
+ * @author      Circle Creative Developer Team
+ */
+class Result extends ResultInterface
 {
-
     /**
      * Number of rows in the result set
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function num_rows()
     {
@@ -63,7 +69,7 @@ class Result extends \O2System\O2DB\Interfaces\Result
         {
             return $this->num_rows = count( $this->result_object );
         }
-        elseif( ( $num_rows = $this->result_id->rowCount() ) > 0 )
+        elseif( ( $num_rows = $this->id_result->rowCount() ) > 0 )
         {
             return $this->num_rows = $num_rows;
         }
@@ -78,9 +84,8 @@ class Result extends \O2System\O2DB\Interfaces\Result
      *
      * Generates an array of column names
      *
-     * @access public
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function list_fields()
     {
@@ -89,7 +94,7 @@ class Result extends \O2System\O2DB\Interfaces\Result
         {
             // Might trigger an E_WARNING due to not all subdrivers
             // supporting getColumnMeta()
-            $field_names[ $i ] = @$this->result_id->getColumnMeta( $i );
+            $field_names[ $i ] = @$this->id_result->getColumnMeta( $i );
             $field_names[ $i ] = $field_names[ $i ][ 'name' ];
         }
 
@@ -101,13 +106,12 @@ class Result extends \O2System\O2DB\Interfaces\Result
     /**
      * Number of fields in the result set
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function num_fields()
     {
-        return $this->result_id->columnCount();
+        return $this->id_result->columnCount();
     }
 
     // --------------------------------------------------------------------
@@ -117,34 +121,34 @@ class Result extends \O2System\O2DB\Interfaces\Result
      *
      * Generates an array of objects containing field meta-data
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
+     * @throws  \Exception
      */
     public function field_data()
     {
         try
         {
-            $retval = array();
+            $data = array();
 
             for( $i = 0, $c = $this->num_fields(); $i < $c; $i++ )
             {
-                $field = $this->result_id->getColumnMeta( $i );
+                $field = $this->id_result->getColumnMeta( $i );
 
-                $retval[ $i ] = new \stdClass();
-                $retval[ $i ]->name = $field[ 'name' ];
-                $retval[ $i ]->type = $field[ 'native_type' ];
-                $retval[ $i ]->max_length = ( $field[ 'len' ] > 0 ) ? $field[ 'len' ] : NULL;
-                $retval[ $i ]->primary_key = (int)( ! empty( $field[ 'flags' ] ) && in_array( 'primary_key', $field[ 'flags' ], TRUE ) );
+                $data[ $i ] = new \stdClass();
+                $data[ $i ]->name = $field[ 'name' ];
+                $data[ $i ]->type = $field[ 'native_type' ];
+                $data[ $i ]->max_length = ( $field[ 'len' ] > 0 ) ? $field[ 'len' ] : NULL;
+                $data[ $i ]->primary_key = (int)( ! empty( $field[ 'flags' ] ) && in_array( 'primary_key', $field[ 'flags' ], TRUE ) );
             }
 
-            return $retval;
+            return $data;
         }
         catch( Exception $e )
         {
-            if( $this->db->db_debug )
+            if( $this->_driver->debug_enabled )
             {
-                return $this->db->display_error( 'db_unsupported_feature' );
+                throw new \Exception('Unsupported feature of the database platform you are using.');
             }
 
             return FALSE;
@@ -156,15 +160,14 @@ class Result extends \O2System\O2DB\Interfaces\Result
     /**
      * Free the result
      *
-     * @access public
-     *
-     * @return    void
+     * @access  public
+     * @return  void
      */
     public function free_result()
     {
-        if( is_object( $this->result_id ) )
+        if( is_object( $this->id_result ) )
         {
-            $this->result_id = FALSE;
+            $this->id_result = FALSE;
         }
     }
 
@@ -175,13 +178,12 @@ class Result extends \O2System\O2DB\Interfaces\Result
      *
      * Returns the result set as an array
      *
-     * @access protected
-     *
-     * @return    array
+     * @access  protected
+     * @return  array
      */
     protected function _fetch_assoc()
     {
-        return $this->result_id->fetch( PDO::FETCH_ASSOC );
+        return $this->id_result->fetch( PDO::FETCH_ASSOC );
     }
 
     // --------------------------------------------------------------------
@@ -191,18 +193,14 @@ class Result extends \O2System\O2DB\Interfaces\Result
      *
      * Returns the result set as an object
      *
-     * @access protected
-     *
      * @param    string $class_name
      *
-     * @return    object
+     * @access  protected
+     * @return  object
      */
     protected function _fetch_object( $class_name = '\stdClass' )
     {
-        return $this->result_id->fetchObject( $class_name );
+        return $this->id_result->fetchObject( $class_name );
     }
 
 }
-
-/* End of file Result.php */
-/* Location: ./o2system/libraries/database/drivers/PDO/Result.php */

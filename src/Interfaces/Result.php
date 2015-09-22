@@ -63,56 +63,56 @@ class Result
     /**
      * Connection ID
      *
-     * @var    resource|object
+     * @type    resource|object
      */
-    public $conn_id;
+    public $id_connection;
 
     /**
      * Result ID
      *
-     * @var    resource|object
+     * @type    resource|object
      */
-    public $result_id;
+    public $id_result;
 
     /**
      * Result Array
      *
-     * @var    array[]
+     * @type    array[]
      */
     public $result_array = array();
 
     /**
      * Result Object
      *
-     * @var    object[]
+     * @type    object[]
      */
     public $result_object = array();
 
     /**
      * Custom Result Object
      *
-     * @var    object[]
+     * @type    object[]
      */
     public $custom_result_object = array();
 
     /**
      * Current Row index
      *
-     * @var    int
+     * @type    int
      */
     public $current_row = 0;
 
     /**
      * Number of rows
      *
-     * @var    int
+     * @type    int
      */
     public $num_rows;
 
     /**
      * Row data
      *
-     * @var    array
+     * @type    array
      */
     public $row_data;
 
@@ -122,13 +122,11 @@ class Result
      * Constructor
      *
      * @param    object $driver_object
-     *
-     * @return    void
      */
     public function __construct( &$driver_object )
     {
-        $this->conn_id = $driver_object->conn_id;
-        $this->result_id = $driver_object->result_id;
+        $this->id_connection = $driver_object->id_connection;
+        $this->id_result = $driver_object->id_result;
     }
 
     // --------------------------------------------------------------------
@@ -173,7 +171,7 @@ class Result
         // In the event that query caching is on, the result_id variable
         // will not be a valid resource so we'll simply return an empty
         // array.
-        if( ! $this->result_id OR $this->num_rows === 0 )
+        if( ! $this->id_result OR $this->num_rows === 0 )
         {
             return array();
         }
@@ -350,7 +348,7 @@ class Result
         // In the event that query caching is on, the result_id variable
         // will not be a valid resource so we'll simply return an empty
         // array.
-        if( ! $this->result_id OR $this->num_rows === 0 )
+        if( ! $this->id_result OR $this->num_rows === 0 )
         {
             return array();
         }
@@ -361,6 +359,7 @@ class Result
             {
                 $this->result_object[ $i ] = (object)$this->result_array[ $i ];
             }
+
             return $this->result_object;
         }
 
@@ -448,7 +447,7 @@ class Result
         {
             return $this->custom_result_object[ $class_name ];
         }
-        elseif( ! $this->result_id OR $this->num_rows === 0 )
+        elseif( ! $this->id_result OR $this->num_rows === 0 )
         {
             return array();
         }
@@ -720,7 +719,6 @@ class Result
      */
     public function free_result()
     {
-        $this->result_id = FALSE;
+        $this->id_result = FALSE;
     }
-
 }

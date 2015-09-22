@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,33 +29,31 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
+// ------------------------------------------------------------------------
+
 namespace O2System\O2DB\Drivers\Cubrid;
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
+
+// ------------------------------------------------------------------------
 
 use O2System\O2DB\Interfaces\Forge as ForgeInterface;
 
 /**
- * Database Driver Class
+ * Cubrid Database Forge
  *
- * @package        O2System
- * @subpackage     Drivers
- * @category       Database
- * @author         Steeven Andrian Salim
- * @link           http://o2system.center/framework/user-guide/libraries/database.htm
+ * @author      Circle Creative Developer Team
  */
 class Forge extends ForgeInterface
 {
-
     /**
      * CREATE DATABASE statement
      *
-     * @var    string
+     * @access  protected
+     * @type    string
      */
     protected $_create_database = FALSE;
 
@@ -65,28 +63,32 @@ class Forge extends ForgeInterface
      * Whether table keys are created from within the
      * CREATE TABLE statement.
      *
-     * @var    bool
+     * @access  protected
+     * @type    bool
      */
     protected $_create_table_keys = TRUE;
 
     /**
      * DROP DATABASE statement
      *
-     * @var    string
+     * @access  protected
+     * @type    string
      */
     protected $_drop_database = FALSE;
 
     /**
      * CREATE TABLE IF statement
      *
-     * @var    string
+     * @access  protected
+     * @type    string
      */
     protected $_create_table_if = FALSE;
 
     /**
      * UNSIGNED support
      *
-     * @var    array
+     * @access  protected
+     * @type    array
      */
     protected $_unsigned = array(
         'SHORT'    => 'INTEGER',
@@ -103,13 +105,12 @@ class Forge extends ForgeInterface
     /**
      * ALTER TABLE
      *
-     * @access protected
+     * @param   string $alter_type ALTER type
+     * @param   string $table      Table name
+     * @param   mixed  $field      Column definition
      *
-     * @param    string $alter_type ALTER type
-     * @param    string $table      Table name
-     * @param    mixed  $field      Column definition
-     *
-     * @return    string|string[]
+     * @access  protected
+     * @return  string|string[]
      */
     protected function _alter_table( $alter_type, $table, $field )
     {
@@ -118,7 +119,7 @@ class Forge extends ForgeInterface
             return parent::_alter_table( $alter_type, $table, $field );
         }
 
-        $sql = 'ALTER TABLE ' . $this->db->escape_identifiers( $table );
+        $sql = 'ALTER TABLE ' . $this->_driver->escape_identifiers( $table );
         $sqls = array();
         for( $i = 0, $c = count( $field ); $i < $c; $i++ )
         {
@@ -141,24 +142,23 @@ class Forge extends ForgeInterface
     /**
      * Process column
      *
-     * @access protected
+     * @param   array $field
      *
-     * @param    array $field
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _process_column( $field )
     {
         $extra_clause = isset( $field[ 'after' ] )
-            ? ' AFTER ' . $this->db->escape_identifiers( $field[ 'after' ] ) : '';
+            ? ' AFTER ' . $this->_driver->escape_identifiers( $field[ 'after' ] ) : '';
 
         if( empty( $extra_clause ) && isset( $field[ 'first' ] ) && $field[ 'first' ] === TRUE )
         {
             $extra_clause = ' FIRST';
         }
 
-        return $this->db->escape_identifiers( $field[ 'name' ] )
-               . ( empty( $field[ 'new_name' ] ) ? '' : ' ' . $this->db->escape_identifiers( $field[ 'new_name' ] ) )
+        return $this->_driver->escape_identifiers( $field[ 'name' ] )
+               . ( empty( $field[ 'new_name' ] ) ? '' : ' ' . $this->_driver->escape_identifiers( $field[ 'new_name' ] ) )
                . ' ' . $field[ 'type' ] . $field[ 'length' ]
                . $field[ 'unsigned' ]
                . $field[ 'null' ]
@@ -175,11 +175,10 @@ class Forge extends ForgeInterface
      *
      * Performs a data type mapping between different databases.
      *
-     * @access protected
+     * @param   array &$attributes
      *
-     * @param    array &$attributes
-     *
-     * @return    void
+     * @access  protected
+     * @return  void
      */
     protected function _attr_type( &$attributes )
     {
@@ -205,11 +204,10 @@ class Forge extends ForgeInterface
     /**
      * Process indexes
      *
-     * @access protected
+     * @param   string $table (ignored)
      *
-     * @param    string $table (ignored)
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _process_indexes( $table )
     {
@@ -236,8 +234,8 @@ class Forge extends ForgeInterface
 
             is_array( $this->keys[ $i ] ) OR $this->keys[ $i ] = array( $this->keys[ $i ] );
 
-            $sql .= ",\n\tKEY " . $this->db->escape_identifiers( implode( '_', $this->keys[ $i ] ) )
-                    . ' (' . implode( ', ', $this->db->escape_identifiers( $this->keys[ $i ] ) ) . ')';
+            $sql .= ",\n\tKEY " . $this->_driver->escape_identifiers( implode( '_', $this->keys[ $i ] ) )
+                    . ' (' . implode( ', ', $this->_driver->escape_identifiers( $this->keys[ $i ] ) ) . ')';
         }
 
         $this->keys = array();

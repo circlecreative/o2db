@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,55 +29,48 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
-// --------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 namespace O2System\O2DB\Drivers\Mysqli;
 
-use O2System\O2DB\Factory\Utility as UtilityFactory;
+// ------------------------------------------------------------------------
 
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
-
-// --------------------------------------------------------------------
+use O2System\O2DB\Interfaces\Utility as UtilityInterface;
 
 /**
- * Mysqli Database Adapter Class
+ * MySQLi Database Utility
  *
- * Porting from CodeIgniter Database Mysqli Driver
- *
- * @package        O2System
- * @subpackage     Drivers
- * @category       Database
- * @author         EllisLab Dev Team
- *                 Circle Creative Dev Team
- * @link           http://o2system.center/wiki/#Database
+ * @author      Circle Creative Developer Team
  */
-class Utility extends UtilityFactory
+class Utility extends UtilityInterface
 {
 
     /**
      * List databases statement
      *
-     * @var    string
+     * @access  protected
+     * @type    string
      */
     protected $_list_databases = 'SHOW DATABASES';
 
     /**
      * OPTIMIZE TABLE statement
      *
-     * @var    string
+     * @access  protected
+     * @type    string
      */
     protected $_optimize_table = 'OPTIMIZE TABLE %s';
 
     /**
      * REPAIR TABLE statement
      *
-     * @var    string
+     * @access  protected
+     * @type    string
      */
     protected $_repair_table = 'REPAIR TABLE %s';
 
@@ -86,11 +79,10 @@ class Utility extends UtilityFactory
     /**
      * Export
      *
-     * @access protected
+     * @param   array   $params Preferences
      *
-     * @param    array $params Preferences
-     *
-     * @return    mixed
+     * @access  protected
+     * @return  mixed
      */
     protected function _backup( $params = array() )
     {
@@ -120,7 +112,7 @@ class Utility extends UtilityFactory
             }
 
             // Get the table schema
-            $query = $this->db->query( 'SHOW CREATE TABLE ' . $this->db->escape_identifiers( $this->db->database . '.' . $table ) );
+            $query = $this->_driver->query( 'SHOW CREATE TABLE ' . $this->_driver->escape_identifiers( $this->_driver->database . '.' . $table ) );
 
             // No result means the table name was invalid
             if( $query === FALSE )
@@ -133,7 +125,7 @@ class Utility extends UtilityFactory
 
             if( $add_drop === TRUE )
             {
-                $output .= 'DROP TABLE IF EXISTS ' . $this->db->protect_identifiers( $table ) . ';' . $newline . $newline;
+                $output .= 'DROP TABLE IF EXISTS ' . $this->_driver->protect_identifiers( $table ) . ';' . $newline . $newline;
             }
 
             $i = 0;
@@ -153,7 +145,7 @@ class Utility extends UtilityFactory
             }
 
             // Grab all the data from the current table
-            $query = $this->db->query( 'SELECT * FROM ' . $this->db->protect_identifiers( $table ) );
+            $query = $this->_driver->query( 'SELECT * FROM ' . $this->_driver->protect_identifiers( $table ) );
 
             if( $query->num_rows() === 0 )
             {
@@ -177,7 +169,7 @@ class Utility extends UtilityFactory
                                           TRUE );
 
                 // Create a string of field names
-                $field_str .= $this->db->escape_identifiers( $field->name ) . ', ';
+                $field_str .= $this->_driver->escape_identifiers( $field->name ) . ', ';
                 $i++;
             }
 
@@ -200,7 +192,7 @@ class Utility extends UtilityFactory
                     else
                     {
                         // Escape the data if it's not an integer
-                        $val_str .= ( $is_int[ $i ] === FALSE ) ? $this->db->escape( $v ) : $v;
+                        $val_str .= ( $is_int[ $i ] === FALSE ) ? $this->_driver->escape( $v ) : $v;
                     }
 
                     // Append a comma
@@ -212,7 +204,7 @@ class Utility extends UtilityFactory
                 $val_str = preg_replace( '/, $/', '', $val_str );
 
                 // Build the INSERT string
-                $output .= 'INSERT INTO ' . $this->db->protect_identifiers( $table ) . ' (' . $field_str . ') VALUES (' . $val_str . ');' . $newline;
+                $output .= 'INSERT INTO ' . $this->_driver->protect_identifiers( $table ) . ' (' . $field_str . ') VALUES (' . $val_str . ');' . $newline;
             }
 
             $output .= $newline . $newline;
@@ -228,6 +220,3 @@ class Utility extends UtilityFactory
     }
 
 }
-
-/* End of file Utility.php */
-/* Location: ./o2system/libraries/database/drivers/Mysqli/Utility.php */

@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,66 +29,69 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
-namespace O2System\O2DB\Drivers\SQLite3;
+// ------------------------------------------------------------------------
 
-use O2System\Core\Gears\Logger;
+namespace O2System\O2DB\Drivers\Sqlite3;
 
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
+// ------------------------------------------------------------------------
 
+use O2System\O2DB\Interfaces\Driver as DriverInterface;
 
-class Driver extends \O2System\O2DB
+/**
+ * SQLite3 Database Driver
+ *
+ * @author      Circle Creative Developer Team
+ */
+class Driver extends DriverInterface
 {
-
-    /**
-     * Database driver
-     *
-     * @var    string
-     */
-    public $dbdriver = 'sqlite3';
-
-    // --------------------------------------------------------------------
-
     /**
      * ORDER BY random keyword
      *
-     * @var    array
+     * @access  protected
+     * @type    array
      */
-    protected $_random_keyword = array( 'RANDOM()', 'RANDOM()' );
+    protected $_random_keywords = array( 'RANDOM()', 'RANDOM()' );
 
     // --------------------------------------------------------------------
 
     /**
      * Non-persistent database connection
      *
-     * @access public
+     * @param   bool $persistent
      *
-     * @param    bool $persistent
-     *
-     * @return    SQLite3
+     * @access  public
+     * @return  SQLite3
+     * @throws  \Exception
      */
-    public function db_connect( $persistent = FALSE )
+    public function connect( $persistent = FALSE )
     {
         if( $persistent )
         {
-            Logger::debug( 'SQLite3 doesn\'t support persistent connections' );
-            //log_message('debug', 'SQLite3 doesn\'t support persistent connections');
+            if( $this->debug_enabled )
+            {
+                throw new \Exception( 'SQLite3 doesn\'t support persistent connections' );
+            }
+
+            return FALSE;
         }
 
         try
         {
+            $this->forge = new Forge( $this );
+            $this->utility = new Utility( $this );
+
             return ( ! $this->password )
-                ? new SQLite3( $this->database )
-                : new SQLite3( $this->database, SQLITE3_OPEN_READWRITE | SQLITE3_OPEN_CREATE, $this->password );
+                ? new \SQLite3( $this->database )
+                : new \SQLite3( $this->database, SQLITE3_OPEN_READWRITE | SQLITE3_OPEN_CREATE, $this->password );
         }
-        catch( Exception $e )
+        catch( \Exception $e )
         {
-            return FALSE;
+            throw new \Exception( $e->getMessage() );
         }
     }
 
@@ -97,9 +100,8 @@ class Driver extends \O2System\O2DB
     /**
      * Database version number
      *
-     * @access public
-     *
-     * @return    string
+     * @access  public
+     * @return  string
      */
     public function version()
     {
@@ -108,7 +110,7 @@ class Driver extends \O2System\O2DB
             return $this->data_cache[ 'version' ];
         }
 
-        $version = SQLite3::version();
+        $version = \SQLite3::version();
 
         return $this->data_cache[ 'version' ] = $version[ 'versionString' ];
     }
@@ -118,11 +120,10 @@ class Driver extends \O2System\O2DB
     /**
      * Begin Transaction
      *
-     * @access public
+     * @param   bool $test_mode
      *
-     * @param    bool $test_mode
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_begin( $test_mode = FALSE )
     {
@@ -137,7 +138,7 @@ class Driver extends \O2System\O2DB
         // even if the queries produce a successful result.
         $this->_trans_failure = ( $test_mode === TRUE );
 
-        return $this->conn_id->exec( 'BEGIN TRANSACTION' );
+        return $this->id_connection->exec( 'BEGIN TRANSACTION' );
     }
 
     // --------------------------------------------------------------------
@@ -145,9 +146,8 @@ class Driver extends \O2System\O2DB
     /**
      * Commit Transaction
      *
-     * @access public
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_commit()
     {
@@ -157,7 +157,7 @@ class Driver extends \O2System\O2DB
             return TRUE;
         }
 
-        return $this->conn_id->exec( 'END TRANSACTION' );
+        return $this->id_connection->exec( 'END TRANSACTION' );
     }
 
     // --------------------------------------------------------------------
@@ -165,9 +165,8 @@ class Driver extends \O2System\O2DB
     /**
      * Rollback Transaction
      *
-     * @access public
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_rollback()
     {
@@ -177,7 +176,7 @@ class Driver extends \O2System\O2DB
             return TRUE;
         }
 
-        return $this->conn_id->exec( 'ROLLBACK' );
+        return $this->id_connection->exec( 'ROLLBACK' );
     }
 
     // --------------------------------------------------------------------
@@ -185,13 +184,12 @@ class Driver extends \O2System\O2DB
     /**
      * Affected Rows
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function affected_rows()
     {
-        return $this->conn_id->changes();
+        return $this->id_connection->changes();
     }
 
     // --------------------------------------------------------------------
@@ -199,13 +197,12 @@ class Driver extends \O2System\O2DB
     /**
      * Insert ID
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function insert_id()
     {
-        return $this->conn_id->lastInsertRowID();
+        return $this->id_connection->lastInsertRowID();
     }
 
     // --------------------------------------------------------------------
@@ -213,11 +210,10 @@ class Driver extends \O2System\O2DB
     /**
      * Returns an object with field data
      *
-     * @access public
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function field_data( $table )
     {
@@ -232,18 +228,18 @@ class Driver extends \O2System\O2DB
             return FALSE;
         }
 
-        $retval = array();
+        $data = array();
         for( $i = 0, $c = count( $query ); $i < $c; $i++ )
         {
-            $retval[ $i ] = new \stdClass();
-            $retval[ $i ]->name = $query[ $i ][ 'name' ];
-            $retval[ $i ]->type = $query[ $i ][ 'type' ];
-            $retval[ $i ]->max_length = NULL;
-            $retval[ $i ]->default = $query[ $i ][ 'dflt_value' ];
-            $retval[ $i ]->primary_key = isset( $query[ $i ][ 'pk' ] ) ? (int)$query[ $i ][ 'pk' ] : 0;
+            $data[ $i ] = new \stdClass();
+            $data[ $i ]->name = $query[ $i ][ 'name' ];
+            $data[ $i ]->type = $query[ $i ][ 'type' ];
+            $data[ $i ]->max_length = NULL;
+            $data[ $i ]->default = $query[ $i ][ 'dflt_value' ];
+            $data[ $i ]->primary_key = isset( $query[ $i ][ 'pk' ] ) ? (int)$query[ $i ][ 'pk' ] : 0;
         }
 
-        return $retval;
+        return $data;
     }
 
     // --------------------------------------------------------------------
@@ -254,13 +250,14 @@ class Driver extends \O2System\O2DB
      * Returns an array containing code and message of the last
      * database error that has occured.
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function error()
     {
-        return array( 'code' => $this->conn_id->lastErrorCode(), 'message' => $this->conn_id->lastErrorMsg() );
+        return array(
+            'code' => $this->id_connection->lastErrorCode(), 'message' => $this->id_connection->lastErrorMsg()
+        );
     }
 
     // --------------------------------------------------------------------
@@ -268,19 +265,18 @@ class Driver extends \O2System\O2DB
     /**
      * Execute the query
      *
-     * @access  protected
-     *
      * @todo    Implement use of SQLite3::querySingle(), if needed
      *
-     * @param    string $sql
+     * @param   string $sql SQL Query
      *
-     * @return    mixed    SQLite3Result object or bool
+     * @access  protected
+     * @return  mixed SQLite3Result object or bool
      */
     protected function _execute( $sql )
     {
         return $this->is_write_type( $sql )
-            ? $this->conn_id->exec( $sql )
-            : $this->conn_id->query( $sql );
+            ? $this->id_connection->exec( $sql )
+            : $this->id_connection->query( $sql );
     }
 
     // --------------------------------------------------------------------
@@ -288,15 +284,14 @@ class Driver extends \O2System\O2DB
     /**
      * Platform-dependant string escape
      *
-     * @access protected
+     * @param   string $string
      *
-     * @param    string
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
-    protected function _escape_str( $str )
+    protected function _escape_string( $string )
     {
-        return $this->conn_id->escapeString( $str );
+        return $this->id_connection->escapeString( $string );
     }
 
     // --------------------------------------------------------------------
@@ -306,17 +301,16 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific query string so that the table names can be fetched
      *
-     * @access protected
+     * @param   bool $prefix_limit
      *
-     * @param    bool $prefix_limit
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _list_tables( $prefix_limit = FALSE )
     {
         return 'SELECT "NAME" FROM "SQLITE_MASTER" WHERE "TYPE" = \'table\''
-               . ( ( $prefix_limit !== FALSE && $this->db_prefix != '' )
-            ? ' && "NAME" LIKE \'' . $this->escape_like_str( $this->db_prefix ) . '%\' ' . sprintf( $this->_like_escape_str, $this->_like_escape_chr )
+               . ( ( $prefix_limit !== FALSE && $this->prefix_table != '' )
+            ? ' && "NAME" LIKE \'' . $this->escape_like_string( $this->prefix_table ) . '%\' ' . sprintf( $this->_like_escape_string, $this->_like_escape_character )
             : '' );
     }
 
@@ -327,11 +321,10 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific query string so that the column names can be fetched
      *
-     * @access protected
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _list_columns( $table = '' )
     {
@@ -346,13 +339,12 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific replace string from the supplied data
      *
-     * @access protected
+     * @param   string $table Table name
+     * @param   array  $keys INSERT keys
+     * @param   array  $values INSERT values
      *
-     * @param    string $table  Table name
-     * @param    array  $keys   INSERT keys
-     * @param    array  $values INSERT values
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _replace( $table, $keys, $values )
     {
@@ -369,11 +361,10 @@ class Driver extends \O2System\O2DB
      * If the database does not support the TRUNCATE statement,
      * then this method maps to 'DELETE FROM table'
      *
-     * @access protected
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _truncate( $table )
     {
@@ -385,16 +376,12 @@ class Driver extends \O2System\O2DB
     /**
      * Close DB Connection
      *
-     * @access protected
-     *
-     * @return    void
+     * @access  protected
+     * @return  void
      */
     protected function _close()
     {
-        $this->conn_id->close();
+        $this->id_connection->close();
     }
 
 }
-
-/* End of file Driver.php */
-/* Location: ./o2system/libraries/database/drivers/SQLite3/Driver.php */

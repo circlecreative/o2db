@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,34 +29,31 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
-namespace O2System\O2DB\Drivers\PDO;
+// ------------------------------------------------------------------------
 
-use O2System\Core\Exception;
-use O2System\Core\Gears\Logger;
+namespace O2System\O2DB\Drivers\Pdo;
 
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
+// ------------------------------------------------------------------------
 
+use O2System\O2DB\Interfaces\Driver as DriverInterface;
 
-class Driver extends \O2System\O2DB
+/**
+ * PDO Database Driver
+ *
+ * @author      Circle Creative Developer Team
+ */
+class Driver extends DriverInterface
 {
-
-    /**
-     * Database driver
-     *
-     * @var    string
-     */
-    public $dbdriver = 'pdo';
-
     /**
      * PDO Options
      *
-     * @var    array
+     * @access  public
+     * @type    array
      */
     public $options = array();
 
@@ -65,13 +62,12 @@ class Driver extends \O2System\O2DB
     /**
      * Class constructor
      *
-     * Validates the DSN string and/or detects the sub_db_driver.
+     * Validates the DSN string and/or detects the sub_driver.
      *
-     * @access public
+     * @param   array $params
      *
-     * @param    array $params
-     *
-     * @return    void
+     * @access  public
+     * @throws  \Exception
      */
     public function __construct( $params )
     {
@@ -81,7 +77,7 @@ class Driver extends \O2System\O2DB
         {
             // If there is a minimum valid dsn string pattern found, we're done
             // This is for general PDO users, who tend to have a full DSN string.
-            $this->sub_db_driver = $match[ 1 ];
+            $this->sub_driver = $match[ 1 ];
 
             return;
         }
@@ -90,30 +86,26 @@ class Driver extends \O2System\O2DB
         {
             $this->dsn = $this->hostname;
             $this->hostname = NULL;
-            $this->sub_db_driver = $match[ 1 ];
+            $this->sub_driver = $match[ 1 ];
 
             return;
         }
-        elseif( in_array( $this->sub_db_driver, array( 'mssql', 'sybase' ), TRUE ) )
+        elseif( in_array( $this->sub_driver, array( 'mssql', 'sybase' ), TRUE ) )
         {
-            $this->sub_db_driver = 'dblib';
+            $this->sub_driver = 'dblib';
         }
-        elseif( $this->sub_db_driver === '4D' )
+        elseif( $this->sub_driver === '4D' )
         {
-            $this->sub_db_driver = '4d';
+            $this->sub_driver = '4d';
         }
-        elseif( ! in_array( $this->sub_db_driver, array(
+        elseif( ! in_array( $this->sub_driver, array(
             '4d', 'cubrid', 'dblib', 'firebird', 'ibm', 'informix', 'mysql', 'oci', 'odbc', 'pgsql', 'sqlite', 'sqlsrv'
         ), TRUE )
         )
         {
-            Logger::error( 'PDO: Invalid or non-existent sub_db_driver' );
-            //log_message('error', 'PDO: Invalid or non-existent sub_db_driver');
-
-            if( $this->db_debug )
+            if( $this->debug_mode )
             {
-                Exception::show( 'Invalid or non-existent PDO sub_db_driver' );
-                //show_error('Invalid or non-existent PDO sub_db_driver');
+                throw new \Exception( 'PDO: Invalid or non-existent DB Driver' );
             }
         }
 
@@ -125,13 +117,13 @@ class Driver extends \O2System\O2DB
     /**
      * Database connection
      *
-     * @access public
+     * @param   bool $persistent
      *
-     * @param    bool $persistent
-     *
-     * @return    object
+     * @access  public
+     * @return  object
+     * @throws  \Exception
      */
-    public function db_connect( $persistent = FALSE )
+    public function connect( $persistent = FALSE )
     {
         $this->options[ \PDO::ATTR_PERSISTENT ] = $persistent;
 
@@ -141,9 +133,9 @@ class Driver extends \O2System\O2DB
         }
         catch( \PDOException $e )
         {
-            if( $this->db_debug && empty( $this->failover ) )
+            if( $this->debug_mode && empty( $this->failover ) )
             {
-                $this->display_error( $e->getMessage(), '', TRUE );
+                throw new \Exception( $e->getMessage() );
             }
 
             return FALSE;
@@ -155,9 +147,8 @@ class Driver extends \O2System\O2DB
     /**
      * Database version number
      *
-     * @access public
-     *
-     * @return    string
+     * @access  public
+     * @return  string
      */
     public function version()
     {
@@ -169,7 +160,7 @@ class Driver extends \O2System\O2DB
         // Not all subdrivers support the getAttribute() method
         try
         {
-            return $this->data_cache[ 'version' ] = $this->conn_id->getAttribute( \PDO::ATTR_SERVER_VERSION );
+            return $this->data_cache[ 'version' ] = $this->id_connection->getAttribute( \PDO::ATTR_SERVER_VERSION );
         }
         catch( \PDOException $e )
         {
@@ -182,11 +173,10 @@ class Driver extends \O2System\O2DB
     /**
      * Begin Transaction
      *
-     * @access public
+     * @param   bool $test_mode
      *
-     * @param    bool $test_mode
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_begin( $test_mode = FALSE )
     {
@@ -201,7 +191,7 @@ class Driver extends \O2System\O2DB
         // even if the queries produce a successful result.
         $this->_trans_failure = ( $test_mode === TRUE );
 
-        return $this->conn_id->beginTransaction();
+        return $this->id_connection->beginTransaction();
     }
 
     // --------------------------------------------------------------------
@@ -209,9 +199,8 @@ class Driver extends \O2System\O2DB
     /**
      * Commit Transaction
      *
-     * @access public
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_commit()
     {
@@ -221,7 +210,7 @@ class Driver extends \O2System\O2DB
             return TRUE;
         }
 
-        return $this->conn_id->commit();
+        return $this->id_connection->commit();
     }
 
     // --------------------------------------------------------------------
@@ -229,9 +218,8 @@ class Driver extends \O2System\O2DB
     /**
      * Rollback Transaction
      *
-     * @access public
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_rollback()
     {
@@ -241,7 +229,7 @@ class Driver extends \O2System\O2DB
             return TRUE;
         }
 
-        return $this->conn_id->rollBack();
+        return $this->id_connection->rollBack();
     }
 
     // --------------------------------------------------------------------
@@ -249,13 +237,12 @@ class Driver extends \O2System\O2DB
     /**
      * Affected Rows
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function affected_rows()
     {
-        return is_object( $this->result_id ) ? $this->result_id->rowCount() : 0;
+        return is_object( $this->id_result ) ? $this->id_result->rowCount() : 0;
     }
 
     // --------------------------------------------------------------------
@@ -263,15 +250,14 @@ class Driver extends \O2System\O2DB
     /**
      * Insert ID
      *
-     * @access public
+     * @param   string $name
      *
-     * @param    string $name
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function insert_id( $name = NULL )
     {
-        return $this->conn_id->lastInsertId( $name );
+        return $this->id_connection->lastInsertId( $name );
     }
 
     // --------------------------------------------------------------------
@@ -282,14 +268,13 @@ class Driver extends \O2System\O2DB
      * Returns an array containing code and message of the last
      * database error that has occured.
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function error()
     {
         $error = array( 'code' => '00000', 'message' => '' );
-        $pdo_error = $this->conn_id->errorInfo();
+        $pdo_error = $this->id_connection->errorInfo();
 
         if( empty( $pdo_error[ 0 ] ) )
         {
@@ -310,15 +295,14 @@ class Driver extends \O2System\O2DB
     /**
      * Execute the query
      *
-     * @access public
+     * @param   string $sql SQL query
      *
-     * @param    string $sql SQL query
-     *
-     * @return    mixed
+     * @access  public
+     * @return  mixed
      */
     protected function _execute( $sql )
     {
-        return $this->conn_id->query( $sql );
+        return $this->id_connection->query( $sql );
     }
 
     // --------------------------------------------------------------------
@@ -326,21 +310,20 @@ class Driver extends \O2System\O2DB
     /**
      * Platform-dependant string escape
      *
-     * @access protected
+     * @param   string
      *
-     * @param    string
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
-    protected function _escape_str( $str )
+    protected function _escape_string( $string )
     {
         // Escape the string
-        $str = $this->conn_id->quote( $str );
+        $string = $this->id_connection->quote( $string );
 
         // If there are duplicated quotes, trim them away
-        return ( $str[ 0 ] === "'" )
-            ? substr( $str, 1, -1 )
-            : $str;
+        return ( $string[ 0 ] === "'" )
+            ? substr( $string, 1, -1 )
+            : $string;
     }
 
     // --------------------------------------------------------------------
@@ -350,11 +333,10 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific query so that the column data can be retrieved
      *
-     * @access protected
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _field_data( $table )
     {
@@ -368,13 +350,12 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific batch update string from the supplied data
      *
-     * @access protected
+     * @param   string $table  Table name
+     * @param   array  $values Update data
+     * @param   string $index  WHERE key
      *
-     * @param    string $table Table name
-     * @param    array  $values Update data
-     * @param    string $index WHERE key
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _update_batch( $table, $values, $index )
     {
@@ -407,7 +388,7 @@ class Driver extends \O2System\O2DB
 
         $this->where( $index . ' IN(' . implode( ',', $ids ) . ')', NULL, FALSE );
 
-        return 'UPDATE ' . $table . ' SET ' . substr( $cases, 0, -2 ) . $this->_compile_wh( 'qb_where' );
+        return 'UPDATE ' . $table . ' SET ' . substr( $cases, 0, -2 ) . $this->_compile_where( '_where' );
     }
 
     // --------------------------------------------------------------------
@@ -420,11 +401,10 @@ class Driver extends \O2System\O2DB
      * If the database does not support the TRUNCATE statement,
      * then this method maps to 'DELETE FROM table'
      *
-     * @access protected
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _truncate( $table )
     {
@@ -432,6 +412,3 @@ class Driver extends \O2System\O2DB
     }
 
 }
-
-/* End of file Driver.php */
-/* Location: ./o2system/libraries/database/drivers/PDO/Driver.php */

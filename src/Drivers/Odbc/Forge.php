@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,37 +29,49 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
-namespace O2System\O2DB\Drivers\ODBC;
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
+// ------------------------------------------------------------------------
 
+namespace O2System\O2DB\Drivers\Odbc;
 
-class Forge extends \O2System\O2DB\Interfaces\Forge
+// ------------------------------------------------------------------------
+
+use O2System\O2DB\Interfaces\Forge as ForgeInterface;
+
+/**
+ * ODBC (Unified) Database Forge
+ *
+
+ * @author      Circle Creative Developer Team
+ */
+class Forge extends ForgeInterface
 {
 
     /**
      * CREATE TABLE IF statement
      *
-     * @var    string
+     * @access  protected
+     * @type    string
      */
     protected $_create_table_if = FALSE;
 
     /**
      * DROP TABLE IF statement
      *
-     * @var    string
+     * @access  protected
+     * @type    string
      */
     protected $_drop_table_if = FALSE;
 
     /**
      * UNSIGNED support
      *
-     * @var    bool|array
+     * @access  protected
+     * @type    bool|array
      */
     protected $_unsigned = FALSE;
 
@@ -68,12 +80,11 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
     /**
      * Field attribute AUTO_INCREMENT
      *
-     * @access protected
+     * @param   array &$attributes
+     * @param   array &$field
      *
-     * @param    array &$attributes
-     * @param    array &$field
-     *
-     * @return    void
+     * @access  protected
+     * @return  void
      */
     protected function _attr_auto_increment( &$attributes, &$field )
     {
@@ -81,6 +92,3 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
     }
 
 }
-
-/* End of file Forge.php */
-/* Location: ./o2system/libraries/database/drivers/ODBC/Forge.php */

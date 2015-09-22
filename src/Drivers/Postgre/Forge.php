@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,23 +29,32 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
+// ------------------------------------------------------------------------
+
 namespace O2System\O2DB\Drivers\Postgre;
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
 
+// ------------------------------------------------------------------------
 
-class Forge extends \O2System\O2DB\Interfaces\Forge
+use O2System\O2DB\Interfaces\Forge as ForgeInterface;
+
+/**
+ * Postgre Database Forge
+ *
+
+ * @author      Circle Creative Developer Team
+ */
+class Forge extends ForgeInterface
 {
-
     /**
      * UNSIGNED support
      *
-     * @var    array
+     * @access  protected
+     * @type    array
      */
     protected $_unsigned = array(
         'INT2'     => 'INTEGER',
@@ -62,7 +71,8 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
     /**
      * NULL value representation in CREATE/ALTER TABLE statements
      *
-     * @var    string
+     * @access  protected
+     * @type    string
      */
     protected $_null = 'NULL';
 
@@ -71,17 +81,15 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
     /**
      * Class constructor
      *
-     * @access public
+     * @param   object &$driver Database object
      *
-     * @param    object &$db Database object
-     *
-     * @return    void
+     * @access  public
      */
-    public function __construct( &$db )
+    public function __construct( &$driver )
     {
-        parent::__construct( $db );
+        parent::__construct( $driver );
 
-        if( version_compare( $this->db->version(), '9.0', '>' ) )
+        if( version_compare( $this->_driver->version(), '9.0', '>' ) )
         {
             $this->create_table_if = 'CREATE TABLE IF NOT EXISTS';
         }
@@ -92,13 +100,12 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
     /**
      * ALTER TABLE
      *
-     * @access protected
+     * @param   string $alter_type ALTER type
+     * @param   string $table      Table name
+     * @param   mixed  $field      Column definition
      *
-     * @param    string $alter_type ALTER type
-     * @param    string $table      Table name
-     * @param    mixed  $field      Column definition
-     *
-     * @return    string|string[]
+     * @access  protected
+     * @return  string|string[]
      */
     protected function _alter_table( $alter_type, $table, $field )
     {
@@ -107,7 +114,7 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
             return parent::_alter_table( $alter_type, $table, $field );
         }
 
-        $sql = 'ALTER TABLE ' . $this->db->escape_identifiers( $table );
+        $sql = 'ALTER TABLE ' . $this->_driver->escape_identifiers( $table );
         $sqls = array();
         for( $i = 0, $c = count( $field ); $i < $c; $i++ )
         {
@@ -116,34 +123,34 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
                 return FALSE;
             }
 
-            if( version_compare( $this->db->version(), '8', '>=' ) && isset( $field[ $i ][ 'type' ] ) )
+            if( version_compare( $this->_driver->version(), '8', '>=' ) && isset( $field[ $i ][ 'type' ] ) )
             {
-                $sqls[ ] = $sql . ' ALTER COLUMN ' . $this->db->escape_identifiers( $field[ $i ][ 'name' ] )
+                $sqls[ ] = $sql . ' ALTER COLUMN ' . $this->_driver->escape_identifiers( $field[ $i ][ 'name' ] )
                            . ' TYPE ' . $field[ $i ][ 'type' ] . $field[ $i ][ 'length' ];
             }
 
             if( ! empty( $field[ $i ][ 'default' ] ) )
             {
-                $sqls[ ] = $sql . ' ALTER COLUMN ' . $this->db->escape_identifiers( $field[ $i ][ 'name' ] )
+                $sqls[ ] = $sql . ' ALTER COLUMN ' . $this->_driver->escape_identifiers( $field[ $i ][ 'name' ] )
                            . ' SET DEFAULT ' . $field[ $i ][ 'default' ];
             }
 
             if( isset( $field[ $i ][ 'null' ] ) )
             {
-                $sqls[ ] = $sql . ' ALTER COLUMN ' . $this->db->escape_identifiers( $field[ $i ][ 'name' ] )
+                $sqls[ ] = $sql . ' ALTER COLUMN ' . $this->_driver->escape_identifiers( $field[ $i ][ 'name' ] )
                            . ( $field[ $i ][ 'null' ] === TRUE ? ' DROP NOT NULL' : ' SET NOT NULL' );
             }
 
             if( ! empty( $field[ $i ][ 'new_name' ] ) )
             {
-                $sqls[ ] = $sql . ' RENAME COLUMN ' . $this->db->escape_identifiers( $field[ $i ][ 'name' ] )
-                           . ' TO ' . $this->db->escape_identifiers( $field[ $i ][ 'new_name' ] );
+                $sqls[ ] = $sql . ' RENAME COLUMN ' . $this->_driver->escape_identifiers( $field[ $i ][ 'name' ] )
+                           . ' TO ' . $this->_driver->escape_identifiers( $field[ $i ][ 'new_name' ] );
             }
 
             if( ! empty( $field[ $i ][ 'comment' ] ) )
             {
                 $sqls[ ] = 'COMMENT ON COLUMN '
-                           . $this->db->escape_identifiers( $table ) . '.' . $this->db->escape_identifiers( $field[ $i ][ 'name' ] )
+                           . $this->_driver->escape_identifiers( $table ) . '.' . $this->_driver->escape_identifiers( $field[ $i ][ 'name' ] )
                            . ' IS ' . $field[ $i ][ 'comment' ];
             }
         }
@@ -158,11 +165,10 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
      *
      * Performs a data type mapping between different databases.
      *
-     * @access protected
+     * @param   array &$attributes
      *
-     * @param    array &$attributes
-     *
-     * @return    void
+     * @access  protected
+     * @return  void
      */
     protected function _attr_type( &$attributes )
     {
@@ -194,12 +200,11 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
     /**
      * Field attribute AUTO_INCREMENT
      *
-     * @access protected
+     * @param   array &$attributes
+     * @param   array &$field
      *
-     * @param    array &$attributes
-     * @param    array &$field
-     *
-     * @return    void
+     * @access  protected
+     * @return  void
      */
     protected function _attr_auto_increment( &$attributes, &$field )
     {
@@ -212,6 +217,3 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
     }
 
 }
-
-/* End of file Forge.php */
-/* Location: ./o2system/libraries/database/drivers/Postgre/Forge.php */

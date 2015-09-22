@@ -6,7 +6,7 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014, PT. Lingkar Kreasi (Circle Creative).
+ * Copyright (c) 2015, PT. Lingkar Kreasi (Circle Creative).
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
  * @license        http://circle-creative.com/products/o2db/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
+ * @license        http://opensource.org/licenses/MIT   MIT License
  * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
@@ -54,10 +54,10 @@ use O2System\O2Gears\Logger;
  */
 class O2DB
 {
-    protected $_valid_drivers;
+    protected $_valid_drivers = array();
 
-    protected $_config = array();
-    protected $_conn;
+    protected        $_config      = array();
+    protected static $_connections = array();
 
     /**
      * Class Constructor
@@ -66,13 +66,29 @@ class O2DB
      *
      * @access  public
      */
-    public function __construct()
+    public function __construct( $config = array() )
     {
-        foreach( glob( SYSTEMPATH . 'libraries/database/drivers/*', GLOB_ONLYDIR ) as $package )
+        foreach( glob( __DIR__ . '/Drivers/*', GLOB_ONLYDIR ) as $package )
         {
             $package = str_replace( '\\', '/', $package );
             $package = explode( '/', $package );
             $this->_valid_drivers[ ] = end( $package );
+        }
+
+        $this->_valid_drivers = array_map( 'strtolower', $this->_valid_drivers );
+
+        if( ! empty( $config ) )
+        {
+            if( is_array( $config ) )
+            {
+                $this->_config = $config;
+
+                return $this;
+            }
+            elseif( is_string( $config ) )
+            {
+                return $this->connect( $config );
+            }
         }
 
         Logger::info( 'Database (DB) Library Initialized' );
@@ -86,7 +102,7 @@ class O2DB
      * @access  public
      * @return  \O2System\O2DB
      */
-    public function set_config(array $config = array())
+    public function set_config( array $config = array() )
     {
         $this->_config = $config;
 
@@ -96,22 +112,22 @@ class O2DB
     /**
      * Connect to Database Engine
      *
-     * @param string $conn  Connection Key Name or DSN Connection
+     * @param string $connection Connection Key Name or DSN Connection
      *
      * @access  public
      * @return  object  Returning Database Driver Class Object
      * @throws \Exception
      */
-    public function &connect( $conn = NULL )
+    public function &connect( $connection = NULL, $name = NULL )
     {
-        $conn = empty( $conn ) ? 'default' : $conn;
+        $connection = empty( $connection ) ? 'default' : $connection;
 
         // Load the DB config file if a DSN string wasn't passed
-        if( isset( $this->_config[ $conn ] ) )
+        if( isset( $this->_config[ $connection ] ) )
         {
-            $this->_conn = $this->_config[ $conn ];
+            $connection = $this->_config[ $connection ];
         }
-        elseif( is_string( $conn ) && strpos( $conn, '://' ) !== FALSE )
+        elseif( is_string( $connection ) && strpos( $connection, '://' ) !== FALSE )
         {
             /**
              * Parse the URL from the DSN string
@@ -120,66 +136,79 @@ class O2DB
              * parameter. DSNs must have this prototype:
              * $dsn = 'driver://username:password@hostname/database';
              */
-            if( ( $dsn = @parse_url( $conn ) ) === FALSE )
+            if( ( $dsn = @parse_url( $connection ) ) === FALSE )
             {
                 throw new \Exception( 'Invalid DB Connection String' );
             }
 
-            $this->_conn = array(
-                'db_driver' => $dsn[ 'scheme' ],
-                'hostname'  => isset( $dsn[ 'host' ] ) ? rawurldecode( $dsn[ 'host' ] ) : '',
-                'port'      => isset( $dsn[ 'port' ] ) ? rawurldecode( $dsn[ 'port' ] ) : '',
-                'username'  => isset( $dsn[ 'user' ] ) ? rawurldecode( $dsn[ 'user' ] ) : '',
-                'password'  => isset( $dsn[ 'pass' ] ) ? rawurldecode( $dsn[ 'pass' ] ) : '',
-                'database'  => isset( $dsn[ 'path' ] ) ? rawurldecode( substr( $dsn[ 'path' ], 1 ) ) : ''
+            $connection = array(
+                'driver'   => $dsn[ 'scheme' ],
+                'hostname' => isset( $dsn[ 'host' ] ) ? rawurldecode( $dsn[ 'host' ] ) : '',
+                'port'     => isset( $dsn[ 'port' ] ) ? rawurldecode( $dsn[ 'port' ] ) : '',
+                'username' => isset( $dsn[ 'user' ] ) ? rawurldecode( $dsn[ 'user' ] ) : '',
+                'password' => isset( $dsn[ 'pass' ] ) ? rawurldecode( $dsn[ 'pass' ] ) : '',
+                'database' => isset( $dsn[ 'path' ] ) ? rawurldecode( substr( $dsn[ 'path' ], 1 ) ) : ''
             );
+
+            // Validate Connection
+            $connection[ 'username' ] = $connection[ 'username' ] === 'username' ? NULL : $connection[ 'username' ];
+            $connection[ 'password' ] = $connection[ 'password' ] === 'password' ? NULL : $connection[ 'password' ];
+            $connection[ 'hostname' ] = $connection[ 'hostname' ] === 'hostname' ? NULL : $connection[ 'hostname' ];
 
             // Were additional config items set?
             if( isset( $dsn[ 'query' ] ) )
             {
                 parse_str( $dsn[ 'query' ], $extra );
 
-                foreach( $extra as $key => $val )
+                foreach( $extra as $key => $value )
                 {
-                    if( is_string( $val ) && in_array( strtoupper( $val ), array( 'TRUE', 'FALSE', 'NULL' ) ) )
+                    if( is_string( $value ) AND in_array( strtoupper( $value ), array( 'TRUE', 'FALSE', 'NULL' ) ) )
                     {
-                        $val = var_export( $val, TRUE );
+                        $value = var_export( $value, TRUE );
                     }
 
-                    static::$_conn[ $key ] = $val;
+                    $connection[ $key ] = $value;
                 }
             }
         }
 
+        if( strpos( $connection[ 'driver' ], '/' ) !== FALSE )
+        {
+            $connection[ 'sub_driver' ] = end( explode( '/', $connection[ 'driver' ] ) );
+        }
+
         // No DB specified yet? Beat them senseless...
-        if( empty( $this->_conn[ 'db_driver' ] ) )
+        if( empty( $connection[ 'driver' ] ) )
         {
             throw new \Exception( 'You have not selected a database type to connect to.' );
         }
 
-        if( ! in_array( $this->_conn[ 'db_driver' ], $this->_valid_drivers ) )
+        if( ! in_array( $connection[ 'driver' ], $this->_valid_drivers ) )
         {
             throw new \Exception( 'Unsupported database driver.' );
         }
 
+        // Defined Connection Name
+        $name = is_null( $name ) ? md5( $connection[ 'hostname' ] . $connection[ 'database' ] ) : $name;
+
         // Instantiate the DB adapter
-        $db_driver_class = '\O2System\O2DB\Drivers\\' . ucfirst( $this->_conn[ 'db_driver' ] ) . '\Driver';
-        $db_adapter = new $db_driver_class( $this->_conn );
+        $driver_class_name = get_called_class() . '\\Drivers\\' . ucfirst( $connection[ 'driver' ] ) . '\Driver';
+        static::$_connections[ $name ] = new $driver_class_name( $connection );
 
         // Check for a sub_db_driver
-        if( ! empty( $this->_config[ 'sub_db_driver' ] ) )
+        if( ! empty( $connection[ 'sub_driver' ] ) )
         {
-            if( ! isset( $db_adapter->_valid_subdrivers[ $this->_config[ 'sub_db_driver' ] ] ) )
+            if( ! isset( static::$_connections[ $name ]->_valid_sub_drivers[ $connection[ 'sub_driver' ] ] ) )
             {
-                throw new \Exception( 'Unsupported database sub_db_driver.' );
+                throw new \Exception( 'Unsupported Sub Driver Database.' );
             }
 
-            $db_subdriver_class = '\O2System\O2DB\Drivers\\' . ucfirst( $this->_conn[ 'db_driver' ] ) . '\\' . ucfirst( $this->_config[ 'sub_db_driver' ] ) . '\Driver';
-            $db_adapter = new $db_subdriver_class( static::$_conn );
+            $sub_driver_class_name = '\O2System\O2DB\Drivers\\' . ucfirst( $connection[ 'driver' ] ) . '\\' . ucfirst( $connection[ 'sub_driver' ] ) . '\Driver';
+            static::$_connections[ $name ] = new $sub_driver_class_name( $connection );
         }
 
-        $db_adapter->initialize();
+        static::$_connections[ $name ]->initialize();
 
-        return $db_adapter;
+        return static::$_connections[ $name ];
     }
 }

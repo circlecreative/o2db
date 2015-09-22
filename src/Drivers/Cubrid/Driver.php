@@ -34,36 +34,26 @@
  * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
+// ------------------------------------------------------------------------
+
+namespace O2System\O2DB\Drivers\Cubrid;
 
 // ------------------------------------------------------------------------
 
-namespace O2System;
-
-// ------------------------------------------------------------------------
+use O2System\O2DB\Interfaces\Driver as DriverInterface;
 
 /**
- * Database Driver Class
+ * Cubrid Database Driver
  *
- * @package        O2System
- * @subpackage     Drivers
- * @category       Database
- * @author         Steeven Andrian Salim
- * @link           http://o2system.center/framework/user-guide/libraries/database.htm
+ * @author      Circle Creative Developer Team
  */
-class Driver extends \O2System\O2DB
+class Driver extends DriverInterface
 {
-
-    /**
-     * Database driver
-     *
-     * @var    string
-     */
-    public $dbdriver = 'cubrid';
-
     /**
      * Auto-commit flag
      *
-     * @var    bool
+     * @access  public
+     * @type    bool
      */
     public $auto_commit = TRUE;
 
@@ -72,27 +62,27 @@ class Driver extends \O2System\O2DB
     /**
      * Identifier escape character
      *
-     * @var    string
+     * @access  protected
+     * @type    string
      */
-    protected $_escape_char = '`';
+    protected $_escape_character = '`';
 
     /**
      * ORDER BY random keyword
      *
-     * @var    array
+     * @access  protected
+     * @type    array
      */
-    protected $_random_keyword = array( 'RANDOM()', 'RANDOM(%d)' );
+    protected $_random_keywords = array( 'RANDOM()', 'RANDOM(%d)' );
 
     // --------------------------------------------------------------------
 
     /**
      * Class constructor
      *
-     * @access public
+     * @param   array $params
      *
-     * @param    array $params
-     *
-     * @return    void
+     * @access  public
      */
     public function __construct( $params )
     {
@@ -117,13 +107,12 @@ class Driver extends \O2System\O2DB
     /**
      * Non-persistent database connection
      *
-     * @access public
+     * @param   bool $persistent
      *
-     * @param    bool $persistent
-     *
-     * @return    resource
+     * @access  public
+     * @return  resource
      */
-    public function db_connect( $persistent = FALSE )
+    public function connect( $persistent = FALSE )
     {
         if( preg_match( '/^CUBRID:[^:]+(:[0-9][1-9]{0,4})?:[^:]+:([^:]*):([^:]*):(\?.+)?$/', $this->dsn, $matches ) )
         {
@@ -149,15 +138,14 @@ class Driver extends \O2System\O2DB
      * Keep / reestablish the db connection if no queries have been
      * sent for a length of time exceeding the server's idle timeout
      *
-     * @access public
-     *
-     * @return    void
+     * @access  public
+     * @return  void
      */
     public function reconnect()
     {
-        if( cubrid_ping( $this->conn_id ) === FALSE )
+        if( cubrid_ping( $this->id_connection ) === FALSE )
         {
-            $this->conn_id = FALSE;
+            $this->id_connection = FALSE;
         }
     }
 
@@ -166,9 +154,8 @@ class Driver extends \O2System\O2DB
     /**
      * Database version number
      *
-     * @access public
-     *
-     * @return    string
+     * @access  public
+     * @return  string
      */
     public function version()
     {
@@ -177,7 +164,7 @@ class Driver extends \O2System\O2DB
             return $this->data_cache[ 'version' ];
         }
 
-        return ( ! $this->conn_id OR ( $version = cubrid_get_server_info( $this->conn_id ) ) === FALSE )
+        return ( ! $this->id_connection OR ( $version = cubrid_get_server_info( $this->id_connection ) ) === FALSE )
             ? FALSE
             : $this->data_cache[ 'version' ] = $version;
     }
@@ -187,11 +174,10 @@ class Driver extends \O2System\O2DB
     /**
      * Begin Transaction
      *
-     * @access public
+     * @param   bool $test_mode
      *
-     * @param    bool $test_mode
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_begin( $test_mode = FALSE )
     {
@@ -206,9 +192,9 @@ class Driver extends \O2System\O2DB
         // even if the queries produce a successful result.
         $this->_trans_failure = ( $test_mode === TRUE );
 
-        if( cubrid_get_autocommit( $this->conn_id ) )
+        if( cubrid_get_autocommit( $this->id_connection ) )
         {
-            cubrid_set_autocommit( $this->conn_id, CUBRID_AUTOCOMMIT_FALSE );
+            cubrid_set_autocommit( $this->id_connection, CUBRID_AUTOCOMMIT_FALSE );
         }
 
         return TRUE;
@@ -219,9 +205,8 @@ class Driver extends \O2System\O2DB
     /**
      * Commit Transaction
      *
-     * @access public
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_commit()
     {
@@ -231,11 +216,11 @@ class Driver extends \O2System\O2DB
             return TRUE;
         }
 
-        cubrid_commit( $this->conn_id );
+        cubrid_commit( $this->id_connection );
 
-        if( $this->auto_commit && ! cubrid_get_autocommit( $this->conn_id ) )
+        if( $this->auto_commit && ! cubrid_get_autocommit( $this->id_connection ) )
         {
-            cubrid_set_autocommit( $this->conn_id, CUBRID_AUTOCOMMIT_TRUE );
+            cubrid_set_autocommit( $this->id_connection, CUBRID_AUTOCOMMIT_TRUE );
         }
 
         return TRUE;
@@ -246,9 +231,8 @@ class Driver extends \O2System\O2DB
     /**
      * Rollback Transaction
      *
-     * @access public
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_rollback()
     {
@@ -258,11 +242,11 @@ class Driver extends \O2System\O2DB
             return TRUE;
         }
 
-        cubrid_rollback( $this->conn_id );
+        cubrid_rollback( $this->id_connection );
 
-        if( $this->auto_commit && ! cubrid_get_autocommit( $this->conn_id ) )
+        if( $this->auto_commit && ! cubrid_get_autocommit( $this->id_connection ) )
         {
-            cubrid_set_autocommit( $this->conn_id, CUBRID_AUTOCOMMIT_TRUE );
+            cubrid_set_autocommit( $this->id_connection, CUBRID_AUTOCOMMIT_TRUE );
         }
 
         return TRUE;
@@ -273,9 +257,8 @@ class Driver extends \O2System\O2DB
     /**
      * Affected Rows
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function affected_rows()
     {
@@ -287,13 +270,12 @@ class Driver extends \O2System\O2DB
     /**
      * Insert ID
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function insert_id()
     {
-        return cubrid_insert_id( $this->conn_id );
+        return cubrid_insert_id( $this->id_connection );
     }
 
     // --------------------------------------------------------------------
@@ -301,11 +283,10 @@ class Driver extends \O2System\O2DB
     /**
      * Returns an object with field data
      *
-     * @access public
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function field_data( $table )
     {
@@ -315,22 +296,22 @@ class Driver extends \O2System\O2DB
         }
         $query = $query->result_object();
 
-        $retval = array();
+        $field = array();
         for( $i = 0, $c = count( $query ); $i < $c; $i++ )
         {
-            $retval[ $i ] = new \stdClass();
-            $retval[ $i ]->name = $query[ $i ]->Field;
+            $field[ $i ] = new \stdClass();
+            $field[ $i ]->name = $query[ $i ]->Field;
 
             sscanf( $query[ $i ]->Type, '%[a-z](%d)',
-                    $retval[ $i ]->type,
-                    $retval[ $i ]->max_length
+                    $field[ $i ]->type,
+                    $field[ $i ]->max_length
             );
 
-            $retval[ $i ]->default = $query[ $i ]->Default;
-            $retval[ $i ]->primary_key = (int)( $query[ $i ]->Key === 'PRI' );
+            $field[ $i ]->default = $query[ $i ]->Default;
+            $field[ $i ]->primary_key = (int)( $query[ $i ]->Key === 'PRI' );
         }
 
-        return $retval;
+        return $field;
     }
 
     // --------------------------------------------------------------------
@@ -341,13 +322,14 @@ class Driver extends \O2System\O2DB
      * Returns an array containing code and message of the last
      * database error that has occured.
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function error()
     {
-        return array( 'code' => cubrid_errno( $this->conn_id ), 'message' => cubrid_error( $this->conn_id ) );
+        return array(
+            'code' => cubrid_errno( $this->id_connection ), 'message' => cubrid_error( $this->id_connection )
+        );
     }
 
     // --------------------------------------------------------------------
@@ -355,15 +337,14 @@ class Driver extends \O2System\O2DB
     /**
      * Execute the query
      *
-     * @access protected
+     * @param   string $sql an SQL query
      *
-     * @param    string $sql an SQL query
-     *
-     * @return    resource
+     * @access  protected
+     * @return  resource
      */
     protected function _execute( $sql )
     {
-        return cubrid_query( $sql, $this->conn_id );
+        return cubrid_query( $sql, $this->id_connection );
     }
 
     // --------------------------------------------------------------------
@@ -371,15 +352,14 @@ class Driver extends \O2System\O2DB
     /**
      * Platform-dependant string escape
      *
-     * @access public
+     * @param   string $string
      *
-     * @param    string
-     *
-     * @return    string
+     * @access  public
+     * @return  string
      */
-    protected function _escape_str( $str )
+    protected function _escape_string( $string )
     {
-        return cubrid_real_escape_string( $str, $this->conn_id );
+        return cubrid_real_escape_string( $string, $this->id_connection );
     }
 
     // --------------------------------------------------------------------
@@ -389,19 +369,18 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific query string so that the table names can be fetched
      *
+     * @param   bool $prefix_limit
+     *
      * @access protected
-     *
-     * @param    bool $prefix_limit
-     *
-     * @return    string
+     * @return  string
      */
     protected function _list_tables( $prefix_limit = FALSE )
     {
         $sql = 'SHOW TABLES';
 
-        if( $prefix_limit !== FALSE && $this->db_prefix !== '' )
+        if( $prefix_limit !== FALSE && $this->prefix_table !== '' )
         {
-            return $sql . " LIKE '" . $this->escape_like_str( $this->db_prefix ) . "%'";
+            return $sql . " LIKE '" . $this->escape_like_string( $this->prefix_table ) . "%'";
         }
 
         return $sql;
@@ -414,11 +393,10 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific query string so that the column names can be fetched
      *
-     * @access protected
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _list_columns( $table = '' )
     {
@@ -433,18 +411,17 @@ class Driver extends \O2System\O2DB
      * Groups tables in FROM clauses if needed, so there is no confusion
      * about operator precedence.
      *
-     * @access protected
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _from_tables()
     {
-        if( ! empty( $this->qb_join ) && count( $this->qb_from ) > 1 )
+        if( ! empty( $this->_join ) && count( $this->_from ) > 1 )
         {
-            return '(' . implode( ', ', $this->qb_from ) . ')';
+            return '(' . implode( ', ', $this->_from ) . ')';
         }
 
-        return implode( ', ', $this->qb_from );
+        return implode( ', ', $this->_from );
     }
 
     // --------------------------------------------------------------------
@@ -452,16 +429,12 @@ class Driver extends \O2System\O2DB
     /**
      * Close DB Connection
      *
-     * @access protected
-     *
-     * @return    void
+     * @access  protected
+     * @return  void
      */
     protected function _close()
     {
-        cubrid_close( $this->conn_id );
+        cubrid_close( $this->id_connection );
     }
 
 }
-
-/* End of file Driver.php */
-/* Location: ./o2system/libraries/database/drivers/Cubrid/Driver.php */

@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,31 +29,37 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
-namespace O2System\O2DB\Drivers\SQLite;
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
+// ------------------------------------------------------------------------
 
+namespace O2System\O2DB\Drivers\Sqlite;
 
-class Result extends \O2System\O2DB\Interfaces\Result
+// ------------------------------------------------------------------------
+
+use O2System\O2DB\Interfaces\Result as ResultInterface;
+
+/**
+ * Sqlite Database Result
+ *
+ * @author      Circle Creative Developer Team
+ */
+class Result extends ResultInterface
 {
-
     /**
      * Number of rows in the result set
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function num_rows()
     {
         return is_int( $this->num_rows )
             ? $this->num_rows
-            : $this->num_rows = @sqlite_num_rows( $this->result_id );
+            : $this->num_rows = @sqlite_num_rows( $this->id_result );
     }
 
     // --------------------------------------------------------------------
@@ -63,16 +69,15 @@ class Result extends \O2System\O2DB\Interfaces\Result
      *
      * Generates an array of column names
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function list_fields()
     {
         $field_names = array();
         for( $i = 0, $c = $this->num_fields(); $i < $c; $i++ )
         {
-            $field_names[ $i ] = sqlite_field_name( $this->result_id, $i );
+            $field_names[ $i ] = sqlite_field_name( $this->id_result, $i );
         }
 
         return $field_names;
@@ -83,13 +88,12 @@ class Result extends \O2System\O2DB\Interfaces\Result
     /**
      * Number of fields in the result set
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function num_fields()
     {
-        return @sqlite_num_fields( $this->result_id );
+        return @sqlite_num_fields( $this->id_result );
     }
 
     // --------------------------------------------------------------------
@@ -99,22 +103,21 @@ class Result extends \O2System\O2DB\Interfaces\Result
      *
      * Generates an array of objects containing field meta-data
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function field_data()
     {
-        $retval = array();
+        $data = array();
         for( $i = 0, $c = $this->num_fields(); $i < $c; $i++ )
         {
-            $retval[ $i ] = new \stdClass();
-            $retval[ $i ]->name = sqlite_field_name( $this->result_id, $i );
-            $retval[ $i ]->type = NULL;
-            $retval[ $i ]->max_length = NULL;
+            $data[ $i ] = new \stdClass();
+            $data[ $i ]->name = sqlite_field_name( $this->id_result, $i );
+            $data[ $i ]->type = NULL;
+            $data[ $i ]->max_length = NULL;
         }
 
-        return $retval;
+        return $data;
     }
 
     // --------------------------------------------------------------------
@@ -126,15 +129,14 @@ class Result extends \O2System\O2DB\Interfaces\Result
      * this internally before fetching results to make sure the
      * result set starts at zero.
      *
-     * @access public
+     * @param   int $n
      *
-     * @param    int $n
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function data_seek( $n = 0 )
     {
-        return sqlite_seek( $this->result_id, $n );
+        return sqlite_seek( $this->id_result, $n );
     }
 
     // --------------------------------------------------------------------
@@ -144,11 +146,12 @@ class Result extends \O2System\O2DB\Interfaces\Result
      *
      * Returns the result set as an array
      *
-     * @return    array
+     * @access  protected
+     * @return  array
      */
     protected function _fetch_assoc()
     {
-        return sqlite_fetch_array( $this->result_id );
+        return sqlite_fetch_array( $this->id_result );
     }
 
     // --------------------------------------------------------------------
@@ -158,18 +161,14 @@ class Result extends \O2System\O2DB\Interfaces\Result
      *
      * Returns the result set as an object
      *
-     * @access protected
+     * @param   string  $class_name
      *
-     * @param    string $class_name
-     *
-     * @return    object
+     * @access  protected
+     * @return  object
      */
     protected function _fetch_object( $class_name = '\stdClass' )
     {
-        return sqlite_fetch_object( $this->result_id, $class_name );
+        return sqlite_fetch_object( $this->id_result, $class_name );
     }
 
 }
-
-/* End of file Result.php */
-/* Location: ./o2system/libraries/database/drivers/SQLite/Result.php */

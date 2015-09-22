@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,38 +29,47 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
+// ------------------------------------------------------------------------
 
-namespace O2System\O2DB\Drivers\MsSQL;
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
+namespace O2System\O2DB\Drivers\Mssql;
 
+// ------------------------------------------------------------------------
 
-class Forge extends \O2System\O2DB\Interfaces\Forge
+use O2System\O2DB\Interfaces\Forge as ForgeInterface;
+
+/**
+ * Microsoft SQL Server Database Forge
+ *
+ * @author      Circle Creative Developer Team
+ */
+class Forge extends ForgeInterface
 {
-
     /**
      * CREATE TABLE IF statement
      *
-     * @var    string
+     * @access  protected
+     * @type    string
      */
     protected $_create_table_if = "IF NOT EXISTS (SELECT * FROM sysobjects WHERE ID = object_id(N'%s') && OBJECTPROPERTY(id, N'IsUserTable') = 1)\nCREATE TABLE";
 
     /**
      * DROP TABLE IF statement
      *
-     * @var    string
+     * @access  protected
+     * @type    string
      */
     protected $_drop_table_if = "IF EXISTS (SELECT * FROM sysobjects WHERE ID = object_id(N'%s') && OBJECTPROPERTY(id, N'IsUserTable') = 1)\nDROP TABLE";
 
     /**
      * UNSIGNED support
      *
-     * @var    array
+     * @access  protected
+     * @type    array
      */
     protected $_unsigned = array(
         'TINYINT'  => 'SMALLINT',
@@ -74,13 +83,12 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
     /**
      * ALTER TABLE
      *
-     * @access protected
+     * @param   string $alter_type ALTER type
+     * @param   string $table      Table name
+     * @param   mixed  $field      Column definition
      *
-     * @param    string $alter_type ALTER type
-     * @param    string $table      Table name
-     * @param    mixed  $field      Column definition
-     *
-     * @return    string|string[]
+     * @access  protected
+     * @return  string|string[]
      */
     protected function _alter_table( $alter_type, $table, $field )
     {
@@ -89,7 +97,7 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
             return parent::_alter_table( $alter_type, $table, $field );
         }
 
-        $sql = 'ALTER TABLE ' . $this->db->escape_identifiers( $table ) . ' ALTER COLUMN ';
+        $sql = 'ALTER TABLE ' . $this->_driver->escape_identifiers( $table ) . ' ALTER COLUMN ';
         $sqls = array();
         for( $i = 0, $c = count( $field ); $i < $c; $i++ )
         {
@@ -106,11 +114,10 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
      *
      * Performs a data type mapping between different databases.
      *
-     * @access protected
+     * @param   array &$attributes
      *
-     * @param    array &$attributes
-     *
-     * @return    void
+     * @access  protected
+     * @return  void
      */
     protected function _attr_type( &$attributes )
     {
@@ -135,12 +142,11 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
     /**
      * Field attribute AUTO_INCREMENT
      *
-     * @access protected
+     * @param   array &$attributes
+     * @param   array &$field
      *
-     * @param    array &$attributes
-     * @param    array &$field
-     *
-     * @return    void
+     * @access  protected
+     * @return  void
      */
     protected function _attr_auto_increment( &$attributes, &$field )
     {
@@ -151,6 +157,3 @@ class Forge extends \O2System\O2DB\Interfaces\Forge
     }
 
 }
-
-/* End of file Forge.php */
-/* Location: ./o2system/libraries/database/drivers/MsSQL/Forge.php */

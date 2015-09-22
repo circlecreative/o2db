@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,48 +29,31 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
-// --------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 namespace O2System\O2DB\Drivers\Mysqli;
 
-use O2System\O2DB\Factory\Manager;
+// ------------------------------------------------------------------------
 
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
-
-// --------------------------------------------------------------------
+use O2System\O2DB\Interfaces\Driver as DriverInterface;
 
 /**
- * Mysqli Database Adapter Class
+ * MySQLi Database Driver
  *
- * Porting from CodeIgniter Database Mysqli Driver
- *
- * @package        O2System
- * @subpackage     Drivers
- * @category       Database
- * @author         EllisLab Dev Team
- *                 Circle Creative Dev Team
- * @link           http://o2system.center/wiki/#Database
+ * @author      Circle Creative Developer Team
  */
-class Driver extends Manager
+class Driver extends DriverInterface
 {
-
-    /**
-     * Database driver
-     *
-     * @var    string
-     */
-    public $dbdriver = 'mysqli';
-
     /**
      * Compression flag
      *
-     * @var    bool
+     * @access  public
+     * @type    bool
      */
     public $compress = FALSE;
 
@@ -81,7 +64,8 @@ class Driver extends Manager
      * of affected rows to be shown. Uses a preg_replace when enabled,
      * adding a bit more processing to all queries.
      *
-     * @var    bool
+     * @access  public
+     * @type    bool
      */
     public $delete_hack = TRUE;
 
@@ -90,7 +74,8 @@ class Driver extends Manager
      *
      * Whether we're running in strict SQL mode.
      *
-     * @var    bool
+     * @access  public
+     * @type    bool
      */
     public $stricton = FALSE;
 
@@ -99,23 +84,24 @@ class Driver extends Manager
     /**
      * Identifier escape character
      *
-     * @var    string
+     * @access  public
+     * @type    string
      */
-    protected $_escape_char = '`';
+    protected $_escape_character = '`';
 
     // --------------------------------------------------------------------
 
     /**
      * Database connection
      *
-     * @param    bool $persistent
+     * @todo    SSL support
+     *
+     * @param   bool $persistent
      *
      * @access  public
-     *
-     * @return    object
-     * @todo    SSL support
+     * @return  object
      */
-    public function db_connect( $persistent = FALSE )
+    public function connect( $persistent = FALSE )
     {
         // Do we have a socket path?
         if( $this->hostname[ 0 ] === '/' )
@@ -156,15 +142,14 @@ class Driver extends Manager
      * Keep / reestablish the db connection if no queries have been
      * sent for a length of time exceeding the server's idle timeout
      *
-     * @access public
-     *
-     * @return    void
+     * @access  public
+     * @return  void
      */
     public function reconnect()
     {
-        if( $this->conn_id !== FALSE && $this->conn_id->ping() === FALSE )
+        if( $this->id_connection !== FALSE && $this->id_connection->ping() === FALSE )
         {
-            $this->conn_id = FALSE;
+            $this->id_connection = FALSE;
         }
     }
 
@@ -173,20 +158,19 @@ class Driver extends Manager
     /**
      * Select the database
      *
-     * @access public
+     * @param   string $database
      *
-     * @param    string $database
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
-    public function db_select( $database = '' )
+    public function select( $database = '' )
     {
         if( $database === '' )
         {
             $database = $this->database;
         }
 
-        if( $this->conn_id->select_db( $database ) )
+        if( $this->id_connection->select_db( $database ) )
         {
             $this->database = $database;
 
@@ -201,9 +185,8 @@ class Driver extends Manager
     /**
      * Database version number
      *
-     * @access public
-     *
-     * @return    string
+     * @access  public
+     * @return  string
      */
     public function version()
     {
@@ -212,7 +195,7 @@ class Driver extends Manager
             return $this->data_cache[ 'version' ];
         }
 
-        return $this->data_cache[ 'version' ] = $this->conn_id->server_info;
+        return $this->data_cache[ 'version' ] = $this->id_connection->server_info;
     }
 
     // --------------------------------------------------------------------
@@ -220,11 +203,10 @@ class Driver extends Manager
     /**
      * Begin Transaction
      *
-     * @access public
+     * @param   bool $test_mode
      *
-     * @param    bool $test_mode
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_begin( $test_mode = FALSE )
     {
@@ -239,10 +221,10 @@ class Driver extends Manager
         // even if the queries produce a successful result.
         $this->_trans_failure = ( $test_mode === TRUE );
 
-        $this->conn_id->autocommit( FALSE );
+        $this->id_connection->autocommit( FALSE );
 
         return is_php( '5.5' )
-            ? $this->conn_id->begin_transaction()
+            ? $this->id_connection->begin_transaction()
             : $this->simple_query( 'START TRANSACTION' ); // can also be BEGIN or BEGIN WORK
     }
 
@@ -251,9 +233,8 @@ class Driver extends Manager
     /**
      * Commit Transaction
      *
-     * @access public
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_commit()
     {
@@ -263,9 +244,9 @@ class Driver extends Manager
             return TRUE;
         }
 
-        if( $this->conn_id->commit() )
+        if( $this->id_connection->commit() )
         {
-            $this->conn_id->autocommit( TRUE );
+            $this->id_connection->autocommit( TRUE );
 
             return TRUE;
         }
@@ -278,9 +259,8 @@ class Driver extends Manager
     /**
      * Rollback Transaction
      *
-     * @access public
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_rollback()
     {
@@ -290,9 +270,9 @@ class Driver extends Manager
             return TRUE;
         }
 
-        if( $this->conn_id->rollback() )
+        if( $this->id_connection->rollback() )
         {
-            $this->conn_id->autocommit( TRUE );
+            $this->id_connection->autocommit( TRUE );
 
             return TRUE;
         }
@@ -305,13 +285,12 @@ class Driver extends Manager
     /**
      * Affected Rows
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function affected_rows()
     {
-        return $this->conn_id->affected_rows;
+        return $this->id_connection->affected_rows;
     }
 
     // --------------------------------------------------------------------
@@ -319,13 +298,12 @@ class Driver extends Manager
     /**
      * Insert ID
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function insert_id()
     {
-        return $this->conn_id->insert_id;
+        return $this->id_connection->insert_id;
     }
 
     // --------------------------------------------------------------------
@@ -333,11 +311,10 @@ class Driver extends Manager
     /**
      * Returns an object with field data
      *
-     * @access public
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function field_data( $table )
     {
@@ -349,22 +326,22 @@ class Driver extends Manager
         }
         $query = $query->result_object();
 
-        $retval = array();
+        $data = array();
         for( $i = 0, $c = count( $query ); $i < $c; $i++ )
         {
-            $retval[ $i ] = new \stdClass();
-            $retval[ $i ]->name = $query[ $i ]->Field;
+            $data[ $i ] = new \stdClass();
+            $data[ $i ]->name = $query[ $i ]->Field;
 
             sscanf( $query[ $i ]->Type, '%[a-z](%d)',
-                    $retval[ $i ]->type,
-                    $retval[ $i ]->max_length
+                    $data[ $i ]->type,
+                    $data[ $i ]->max_length
             );
 
-            $retval[ $i ]->default = $query[ $i ]->Default;
-            $retval[ $i ]->primary_key = (int)( $query[ $i ]->Key === 'PRI' );
+            $data[ $i ]->default = $query[ $i ]->Default;
+            $data[ $i ]->primary_key = (int)( $query[ $i ]->Key === 'PRI' );
         }
 
-        return $retval;
+        return $data;
     }
 
     // --------------------------------------------------------------------
@@ -375,21 +352,20 @@ class Driver extends Manager
      * Returns an array containing code and message of the last
      * database error that has occurred.
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function error()
     {
-        if( ! empty( $this->conn_id->connect_errno ) )
+        if( ! empty( $this->id_connection->connect_errno ) )
         {
             return array(
-                'code'    => $this->conn_id->connect_errno,
-                'message' => is_php( '5.2.9' ) ? $this->conn_id->connect_error : mysqli_connect_error()
+                'code'    => $this->id_connection->connect_errno,
+                'message' => is_php( '5.2.9' ) ? $this->id_connection->connect_error : mysqli_connect_error()
             );
         }
 
-        return array( 'code' => $this->conn_id->errno, 'message' => $this->conn_id->error );
+        return array( 'code' => $this->id_connection->errno, 'message' => $this->id_connection->error );
     }
 
     // --------------------------------------------------------------------
@@ -397,15 +373,14 @@ class Driver extends Manager
     /**
      * Set client character set
      *
-     * @access protected
+     * @param   string $charset
      *
-     * @param    string $charset
-     *
-     * @return    bool
+     * @access  protected
+     * @return  bool
      */
-    protected function _db_set_charset( $charset )
+    protected function _set_charset( $charset )
     {
-        return $this->conn_id->set_charset( $charset );
+        return $this->id_connection->set_charset( $charset );
     }
 
     // --------------------------------------------------------------------
@@ -413,15 +388,14 @@ class Driver extends Manager
     /**
      * Execute the query
      *
-     * @access protected
+     * @param   string $sql An SQL query
      *
-     * @param    string $sql an SQL query
-     *
-     * @return    mixed
+     * @access  protected
+     * @return  mixed
      */
     protected function _execute( $sql )
     {
-        return $this->conn_id->query( $this->_prep_query( $sql ) );
+        return $this->id_connection->query( $this->_prep_query( $sql ) );
     }
 
     // --------------------------------------------------------------------
@@ -431,11 +405,10 @@ class Driver extends Manager
      *
      * If needed, each database adapter can prep the query string
      *
-     * @access protected
+     * @param   string $sql An SQL query
      *
-     * @param    string $sql an SQL query
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _prep_query( $sql )
     {
@@ -454,15 +427,14 @@ class Driver extends Manager
     /**
      * Platform-dependant string escape
      *
-     * @access public
+     * @param   string $string
      *
-     * @param    string
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
-    protected function _escape_str( $str )
+    protected function _escape_string( $string )
     {
-        return $this->conn_id->real_escape_string( $str );
+        return $this->id_connection->real_escape_string( $string );
     }
 
     // --------------------------------------------------------------------
@@ -472,19 +444,18 @@ class Driver extends Manager
      *
      * Generates a platform-specific query string so that the table names can be fetched
      *
-     * @access public
+     * @param   bool $prefix_limit
      *
-     * @param    bool $prefix_limit
-     *
-     * @return    string
+     * @access  public
+     * @return  string
      */
     protected function _list_tables( $prefix_limit = FALSE )
     {
         $sql = 'SHOW TABLES FROM ' . $this->escape_identifiers( $this->database );
 
-        if( $prefix_limit !== FALSE && $this->db_prefix !== '' )
+        if( $prefix_limit !== FALSE && $this->prefix_table !== '' )
         {
-            return $sql . " LIKE '" . $this->escape_like_str( $this->db_prefix ) . "%'";
+            return $sql . " LIKE '" . $this->escape_like_string( $this->prefix_table ) . "%'";
         }
 
         return $sql;
@@ -497,11 +468,10 @@ class Driver extends Manager
      *
      * Generates a platform-specific query string so that the column names can be fetched
      *
-     * @access public
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    string
+     * @access  public
+     * @return  string
      */
     protected function _list_columns( $table = '' )
     {
@@ -516,18 +486,17 @@ class Driver extends Manager
      * Groups tables in FROM clauses if needed, so there is no confusion
      * about operator precedence.
      *
-     * @access protected
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _from_tables()
     {
-        if( ! empty( $this->qb_join ) && count( $this->qb_from ) > 1 )
+        if( ! empty( $this->_join ) && count( $this->_from ) > 1 )
         {
-            return '(' . implode( ', ', $this->qb_from ) . ')';
+            return '(' . implode( ', ', $this->_from ) . ')';
         }
 
-        return implode( ', ', $this->qb_from );
+        return implode( ', ', $this->_from );
     }
 
     // --------------------------------------------------------------------
@@ -535,16 +504,12 @@ class Driver extends Manager
     /**
      * Close DB Connection
      *
-     * @access protected
-     *
-     * @return    void
+     * @access  protected
+     * @return  void
      */
     protected function _close()
     {
-        $this->conn_id->close();
+        $this->id_connection->close();
     }
 
 }
-
-/* End of file Driver.php */
-/* Location: ./o2system/libraries/database/drivers/Mysqli/Driver.php */

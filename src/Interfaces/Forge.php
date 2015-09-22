@@ -41,8 +41,6 @@ namespace O2System\O2DB\Interfaces;
 
 // ------------------------------------------------------------------------
 
-use O2System\Core\Gears\Logger;
-
 use O2System\O2Gears\Logger;
 
 /**
@@ -52,67 +50,71 @@ use O2System\O2Gears\Logger;
  *
  * @category      Database
  * @author        Circle Creative Developer Team
- * @link          
+ * @link
  */
 abstract class Forge
 {
     /**
      * Fields data
      *
-     * @var    array
+     * @type    array
      */
     public $fields = array();
+
     /**
      * Keys data
      *
-     * @var    array
+     * @type    array
      */
     public $keys = array();
+
     /**
      * Primary Keys data
      *
-     * @var    array
+     * @type    array
      */
     public $primary_keys = array();
+
     /**
      * Database character set
      *
-     * @var    string
+     * @type    string
      */
-    public $db_char_set = '';
+    public $charset = '';
+
     /**
      * Database object
      *
-     * @var    object
+     * @type    object
      */
-    protected $db;
+    protected $_driver;
 
     // --------------------------------------------------------------------
     /**
      * CREATE DATABASE statement
      *
-     * @var    string
+     * @type    string
      */
     protected $_create_database = 'CREATE DATABASE %s';
 
     /**
      * DROP DATABASE statement
      *
-     * @var    string
+     * @type    string
      */
     protected $_drop_database = 'DROP DATABASE %s';
 
     /**
      * CREATE TABLE statement
      *
-     * @var    string
+     * @type    string
      */
     protected $_create_table = "%s %s (%s\n)";
 
     /**
      * CREATE TABLE IF statement
      *
-     * @var    string
+     * @type    string
      */
     protected $_create_table_if = 'CREATE TABLE IF NOT EXISTS';
 
@@ -122,42 +124,42 @@ abstract class Forge
      * Whether table keys are created from within the
      * CREATE TABLE statement.
      *
-     * @var    bool
+     * @type    bool
      */
     protected $_create_table_keys = FALSE;
 
     /**
      * DROP TABLE IF EXISTS statement
      *
-     * @var    string
+     * @type    string
      */
     protected $_drop_table_if = 'DROP TABLE IF EXISTS';
 
     /**
      * RENAME TABLE statement
      *
-     * @var    string
+     * @type    string
      */
     protected $_rename_table = 'ALTER TABLE %s RENAME TO %s;';
 
     /**
      * UNSIGNED support
      *
-     * @var    bool|array
+     * @type    bool|array
      */
     protected $_unsigned = TRUE;
 
     /**
      * NULL value representatin in CREATE/ALTER TABLE statements
      *
-     * @var    string
+     * @type    string
      */
     protected $_null = '';
 
     /**
      * DEFAULT value representation in CREATE/ALTER TABLE statements
      *
-     * @var    string
+     * @type    string
      */
     protected $_default = ' DEFAULT ';
 
@@ -166,15 +168,12 @@ abstract class Forge
     /**
      * Class constructor
      *
-     * @param    object &$db Database object
-     *
-     * @return    void
+     * @param    object &$driver Database object
      */
-    public function __construct( &$db )
+    public function __construct( &$driver )
     {
-        $this->db =& $db;
+        $this->_driver =& $driver;
         Logger::info( 'Database Forge Class Initialized' );
-        //log_message( 'info', 'Database Forge Class Initialized' );
     }
 
     // --------------------------------------------------------------------
@@ -182,26 +181,35 @@ abstract class Forge
     /**
      * Create database
      *
-     * @param    string $db_name
+     * @param   string $db_name
      *
-     * @return    bool
+     * @return  bool
+     * @throws  \Exception
      */
     public function create_database( $db_name )
     {
         if( $this->_create_database === FALSE )
         {
-            return ( $this->db->db_debug ) ? $this->db->display_error( 'db_unsupported_feature' ) : FALSE;
+            if( $this->_driver->debug_enabled )
+            {
+                throw new \Exception( 'Unsupported feature of the database platform you are using.' );
+            }
+
+            return FALSE;
         }
-        elseif( ! $this->db->query( sprintf( $this->_create_database, $db_name, $this->db->charset,
-                                             $this->db->collate ) )
-        )
+        elseif( ! $this->_driver->query( sprintf( $this->_create_database, $db_name, $this->_driver->charset, $this->_driver->collate ) ) )
         {
-            return ( $this->db->db_debug ) ? $this->db->display_error( 'db_unable_to_drop' ) : FALSE;
+            if( $this->_driver->debug_enabled )
+            {
+                throw new \Exception( 'Unable to drop the specified database.' );
+            }
+
+            return FALSE;
         }
 
-        if( ! empty( $this->db->data_cache[ 'db_names' ] ) )
+        if( ! empty( $this->_driver->data_cache[ 'db_names' ] ) )
         {
-            $this->db->data_cache[ 'db_names' ][ ] = $db_name;
+            $this->_driver->data_cache[ 'db_names' ][ ] = $db_name;
         }
 
         return TRUE;
@@ -212,28 +220,39 @@ abstract class Forge
     /**
      * Drop database
      *
-     * @param    string $db_name
+     * @param   string $db_name
      *
-     * @return    bool
+     * @return  bool
+     * @throws  \Exception
      */
     public function drop_database( $db_name )
     {
         if( $this->_drop_database === FALSE )
         {
-            return ( $this->db->db_debug ) ? $this->db->display_error( 'db_unsupported_feature' ) : FALSE;
+            if( $this->_driver->debug_enabled )
+            {
+                throw new \Exception( 'Unsupported feature of the database platform you are using.' );
+            }
+
+            return FALSE;
         }
-        elseif( ! $this->db->query( sprintf( $this->_drop_database, $db_name ) ) )
+        elseif( ! $this->_driver->query( sprintf( $this->_drop_database, $db_name ) ) )
         {
-            return ( $this->db->db_debug ) ? $this->db->display_error( 'db_unable_to_drop' ) : FALSE;
+            if( $this->_driver->debug_enabled )
+            {
+                throw new \Exception( 'Unable to drop the specified database.' );
+            }
+
+            return FALSE;
         }
 
-        if( ! empty( $this->db->data_cache[ 'db_names' ] ) )
+        if( ! empty( $this->_driver->data_cache[ 'db_names' ] ) )
         {
-            $key = array_search( strtolower( $db_name ), array_map( 'strtolower', $this->db->data_cache[ 'db_names' ] ),
+            $key = array_search( strtolower( $db_name ), array_map( 'strtolower', $this->_driver->data_cache[ 'db_names' ] ),
                                  TRUE );
             if( $key !== FALSE )
             {
-                unset( $this->db->data_cache[ 'db_names' ][ $key ] );
+                unset( $this->_driver->data_cache[ 'db_names' ][ $key ] );
             }
         }
 
@@ -249,24 +268,23 @@ abstract class Forge
      * @param    bool   $if_not_exists Whether to add IF NOT EXISTS condition
      * @param    array  $attributes    Associative array of table attributes
      *
-     * @return    bool
+     * @return bool
+     * @throws \Exception
      */
     public function create_table( $table, $if_not_exists = FALSE, array $attributes = array() )
     {
         if( $table === '' )
         {
-            Exception::show( 'A table name is required for that operation.' );
-            //show_error( 'A table name is required for that operation.' );
+            throw new \Exception( 'A table name is required for that operation.' );
         }
         else
         {
-            $table = $this->db->db_prefix . $table;
+            $table = $this->_driver->prefix_table . $table;
         }
 
         if( count( $this->fields ) === 0 )
         {
-            Exception::show( 'Field information is required.' );
-            //show_error( 'Field information is required.' );
+            throw new \Exception( 'Field information is required.' );
         }
 
         $sql = $this->_create_table( $table, $if_not_exists, $attributes );
@@ -276,20 +294,25 @@ abstract class Forge
             $this->_reset();
             if( $sql === FALSE )
             {
-                return ( $this->db->db_debug ) ? $this->db->display_error( 'db_unsupported_feature' ) : FALSE;
+                if( $this->_driver->debug_enabled )
+                {
+                    throw new \Exception( 'Unsupported feature of the database platform you are using.' );
+                }
+
+                return FALSE;
             }
         }
 
-        if( ( $result = $this->db->query( $sql ) ) !== FALSE )
+        if( ( $result = $this->_driver->query( $sql ) ) !== FALSE )
         {
-            empty( $this->db->data_cache[ 'table_names' ] ) OR $this->db->data_cache[ 'table_names' ][ ] = $table;
+            empty( $this->_driver->data_cache[ 'table_names' ] ) OR $this->_driver->data_cache[ 'table_names' ][ ] = $table;
 
             // Most databases don't support creating indexes from within the CREATE TABLE statement
             if( ! empty( $this->keys ) )
             {
                 for( $i = 0, $sqls = $this->_process_indexes( $table ), $c = count( $sqls ); $i < $c; $i++ )
                 {
-                    $this->db->query( $sqls[ $i ] );
+                    $this->_driver->query( $sqls[ $i ] );
                 }
             }
         }
@@ -304,9 +327,9 @@ abstract class Forge
     /**
      * Create Table
      *
-     * @param    string $table         Table name
-     * @param    bool   $if_not_exists Whether to add 'IF NOT EXISTS' condition
-     * @param    array  $attributes    Associative array of table attributes
+     * @param   string $table         Table name
+     * @param   bool   $if_not_exists Whether to add 'IF NOT EXISTS' condition
+     * @param   array  $attributes    Associative array of table attributes
      *
      * @return    mixed
      */
@@ -314,7 +337,7 @@ abstract class Forge
     {
         if( $if_not_exists === TRUE && $this->_create_table_if === FALSE )
         {
-            if( $this->db->table_exists( $table ) )
+            if( $this->_driver->table_exists( $table ) )
             {
                 return TRUE;
             }
@@ -325,7 +348,7 @@ abstract class Forge
         }
 
         $sql = ( $if_not_exists )
-            ? sprintf( $this->_create_table_if, $this->db->escape_identifiers( $table ) )
+            ? sprintf( $this->_create_table_if, $this->_driver->escape_identifiers( $table ) )
             : 'CREATE TABLE';
 
         $columns = $this->_process_fields( TRUE );
@@ -348,7 +371,7 @@ abstract class Forge
         // _create_table will usually have the following format: "%s %s (%s\n)"
         $sql = sprintf( $this->_create_table . '%s',
                         $sql,
-                        $this->db->escape_identifiers( $table ),
+                        $this->_driver->escape_identifiers( $table ),
                         $columns,
                         $this->_create_table_attr( $attributes )
         );
@@ -361,9 +384,9 @@ abstract class Forge
     /**
      * Process fields
      *
-     * @param    bool $create_table
+     * @param   bool $create_table
      *
-     * @return    array
+     * @return  array
      */
     protected function _process_fields( $create_table = FALSE )
     {
@@ -436,7 +459,7 @@ abstract class Forge
 
             if( isset( $attributes[ 'COMMENT' ] ) )
             {
-                $field[ 'comment' ] = $this->db->escape( $attributes[ 'COMMENT' ] );
+                $field[ 'comment' ] = $this->_driver->escape( $attributes[ 'COMMENT' ] );
             }
 
             if( isset( $attributes[ 'TYPE' ] ) && ! empty( $attributes[ 'CONSTRAINT' ] ) )
@@ -445,7 +468,7 @@ abstract class Forge
                 {
                     case 'ENUM':
                     case 'SET':
-                        $attributes[ 'CONSTRAINT' ] = $this->db->escape( $attributes[ 'CONSTRAINT' ] );
+                        $attributes[ 'CONSTRAINT' ] = $this->_driver->escape( $attributes[ 'CONSTRAINT' ] );
                         $field[ 'length' ] = is_array( $attributes[ 'CONSTRAINT' ] )
                             ? "('" . implode( "','", $attributes[ 'CONSTRAINT' ] ) . "')"
                             : '(' . $attributes[ 'CONSTRAINT' ] . ')';
@@ -562,7 +585,7 @@ abstract class Forge
             }
             else
             {
-                $field[ 'default' ] = $this->_default . $this->db->escape( $attributes[ 'DEFAULT' ] );
+                $field[ 'default' ] = $this->_default . $this->_driver->escape( $attributes[ 'DEFAULT' ] );
             }
         }
     }
@@ -616,7 +639,7 @@ abstract class Forge
      */
     protected function _process_column( $field )
     {
-        return $this->db->escape_identifiers( $field[ 'name' ] )
+        return $this->_driver->escape_identifiers( $field[ 'name' ] )
                . ' ' . $field[ 'type' ] . $field[ 'length' ]
                . $field[ 'unsigned' ]
                . $field[ 'default' ]
@@ -648,8 +671,8 @@ abstract class Forge
 
         if( count( $this->primary_keys ) > 0 )
         {
-            $sql .= ",\n\tCONSTRAINT " . $this->db->escape_identifiers( 'pk_' . $table )
-                    . ' PRIMARY KEY(' . implode( ', ', $this->db->escape_identifiers( $this->primary_keys ) ) . ')';
+            $sql .= ",\n\tCONSTRAINT " . $this->_driver->escape_identifiers( 'pk_' . $table )
+                    . ' PRIMARY KEY(' . implode( ', ', $this->_driver->escape_identifiers( $this->primary_keys ) ) . ')';
         }
 
         return $sql;
@@ -689,10 +712,10 @@ abstract class Forge
 
             is_array( $this->keys[ $i ] ) OR $this->keys[ $i ] = array( $this->keys[ $i ] );
 
-            $sqls[ ] = 'CREATE INDEX ' . $this->db->escape_identifiers( $table . '_' . implode( '_',
-                                                                                                $this->keys[ $i ] ) )
-                       . ' ON ' . $this->db->escape_identifiers( $table )
-                       . ' (' . implode( ', ', $this->db->escape_identifiers( $this->keys[ $i ] ) ) . ');';
+            $sqls[ ] = 'CREATE INDEX ' . $this->_driver->escape_identifiers( $table . '_' . implode( '_',
+                                                                                                     $this->keys[ $i ] ) )
+                       . ' ON ' . $this->_driver->escape_identifiers( $table )
+                       . ' (' . implode( ', ', $this->_driver->escape_identifiers( $this->keys[ $i ] ) ) . ');';
         }
 
         return $sqls;
@@ -744,35 +767,46 @@ abstract class Forge
      * @param    string $table_name Table name
      * @param    bool   $if_exists  Whether to add an IF EXISTS condition
      *
-     * @return    bool
+     * @return bool
+     * @throws \Exception
      */
     public function drop_table( $table_name, $if_exists = FALSE )
     {
         if( $table_name === '' )
         {
-            return ( $this->db->db_debug ) ? $this->db->display_error( 'db_table_name_required' ) : FALSE;
+            if( $this->_driver->debug_enabled )
+            {
+                throw new \Exception( 'A table name is required for that operation.' );
+            }
+
+            return FALSE;
         }
 
-        $query = $this->_drop_table( $this->db->db_prefix . $table_name, $if_exists );
+        $query = $this->_drop_table( $this->_driver->prefix_table . $table_name, $if_exists );
         if( $query === FALSE )
         {
-            return ( $this->db->db_debug ) ? $this->db->display_error( 'db_unsupported_feature' ) : FALSE;
+            if( $this->_driver->debug_enabled )
+            {
+                throw new \Exception( 'Unsupported feature of the database platform you are using.' );
+            }
+
+            return FALSE;
         }
         elseif( $query === TRUE )
         {
             return TRUE;
         }
 
-        $query = $this->db->query( $query );
+        $query = $this->_driver->query( $query );
 
         // Update table list cache
-        if( $query && ! empty( $this->db->data_cache[ 'table_names' ] ) )
+        if( $query && ! empty( $this->_driver->data_cache[ 'table_names' ] ) )
         {
-            $key = array_search( strtolower( $this->db->db_prefix . $table_name ),
-                                 array_map( 'strtolower', $this->db->data_cache[ 'table_names' ] ), TRUE );
+            $key = array_search( strtolower( $this->_driver->prefix_table . $table_name ),
+                                 array_map( 'strtolower', $this->_driver->data_cache[ 'table_names' ] ), TRUE );
             if( $key !== FALSE )
             {
-                unset( $this->db->data_cache[ 'table_names' ][ $key ] );
+                unset( $this->_driver->data_cache[ 'table_names' ][ $key ] );
             }
         }
 
@@ -799,18 +833,18 @@ abstract class Forge
         {
             if( $this->_drop_table_if === FALSE )
             {
-                if( ! $this->db->table_exists( $table ) )
+                if( ! $this->_driver->table_exists( $table ) )
                 {
                     return TRUE;
                 }
             }
             else
             {
-                $sql = sprintf( $this->_drop_table_if, $this->db->escape_identifiers( $table ) );
+                $sql = sprintf( $this->_drop_table_if, $this->_driver->escape_identifiers( $table ) );
             }
         }
 
-        return $sql . ' ' . $this->db->escape_identifiers( $table );
+        return $sql . ' ' . $this->_driver->escape_identifiers( $table );
     }
 
     // --------------------------------------------------------------------
@@ -827,29 +861,35 @@ abstract class Forge
     {
         if( $table_name === '' OR $new_table_name === '' )
         {
-            Exception::show( 'A table name is required for that operation.' );
-
-            //show_error( 'A table name is required for that operation.' );
+            if( $this->_driver->debug_enabled )
+            {
+                throw new \Exception( 'A table name is required for that operation.' );
+            }
 
             return FALSE;
         }
         elseif( $this->_rename_table === FALSE )
         {
-            return ( $this->db->db_debug ) ? $this->db->display_error( 'db_unsupported_feature' ) : FALSE;
+            if( $this->_driver->debug_enabled )
+            {
+                throw new \Exception( 'Unsupported feature of the database platform you are using.' );
+            }
+
+            return FALSE;
         }
 
-        $result = $this->db->query( sprintf( $this->_rename_table,
-                                             $this->db->escape_identifiers( $this->db->db_prefix . $table_name ),
-                                             $this->db->escape_identifiers( $this->db->db_prefix . $new_table_name ) )
+        $result = $this->_driver->query( sprintf( $this->_rename_table,
+                                                  $this->_driver->escape_identifiers( $this->_driver->prefix_table . $table_name ),
+                                                  $this->_driver->escape_identifiers( $this->_driver->prefix_table . $new_table_name ) )
         );
 
-        if( $result && ! empty( $this->db->data_cache[ 'table_names' ] ) )
+        if( $result && ! empty( $this->_driver->data_cache[ 'table_names' ] ) )
         {
-            $key = array_search( strtolower( $this->db->db_prefix . $table_name ),
-                                 array_map( 'strtolower', $this->db->data_cache[ 'table_names' ] ), TRUE );
+            $key = array_search( strtolower( $this->_driver->prefix_table . $table_name ),
+                                 array_map( 'strtolower', $this->_driver->data_cache[ 'table_names' ] ), TRUE );
             if( $key !== FALSE )
             {
-                $this->db->data_cache[ 'table_names' ][ $key ] = $this->db->db_prefix . $new_table_name;
+                $this->_driver->data_cache[ 'table_names' ][ $key ] = $this->_driver->prefix_table . $new_table_name;
             }
         }
 
@@ -885,16 +925,23 @@ abstract class Forge
             $this->add_field( array( $k => $field[ $k ] ) );
         }
 
-        $sqls = $this->_alter_table( 'ADD', $this->db->db_prefix . $table, $this->_process_fields() );
+        $sqls = $this->_alter_table( 'ADD', $this->_driver->prefix_table . $table, $this->_process_fields() );
+
         $this->_reset();
+
         if( $sqls === FALSE )
         {
-            return ( $this->db->db_debug ) ? $this->db->display_error( 'db_unsupported_feature' ) : FALSE;
+            if( $this->_driver->debug_enabled )
+            {
+                throw new \Exception( 'Unsupported feature of the database platform you are using.' );
+            }
+
+            return FALSE;
         }
 
         for( $i = 0, $c = count( $sqls ); $i < $c; $i++ )
         {
-            if( $this->db->query( $sqls[ $i ] ) === FALSE )
+            if( $this->_driver->query( $sqls[ $i ] ) === FALSE )
             {
                 return FALSE;
             }
@@ -908,9 +955,10 @@ abstract class Forge
     /**
      * Add Field
      *
-     * @param    array $field
+     * @param   array $field
      *
-     * @return    O2System\Libraries\DB_forge
+     * @return Forge
+     * @throws \Exception
      */
     public function add_field( $field )
     {
@@ -931,8 +979,12 @@ abstract class Forge
             {
                 if( strpos( $field, ' ' ) === FALSE )
                 {
-                    Exception::show( 'Field information is required for that operation.' );
-                    //show_error( 'Field information is required for that operation.' );
+                    if( $this->_driver->debug_enabled )
+                    {
+                        throw new \Exception( 'Field information is required for that operation.' );
+                    }
+
+                    return FALSE;
                 }
 
                 $this->fields[ ] = $field;
@@ -952,10 +1004,10 @@ abstract class Forge
     /**
      * Add Key
      *
-     * @param    string $key
-     * @param    bool   $primary
+     * @param   string $key
+     * @param   bool   $primary
      *
-     * @return    O2System\Libraries\DB_forge
+     * @return  Forge
      */
     public function add_key( $key, $primary = FALSE )
     {
@@ -994,12 +1046,12 @@ abstract class Forge
      */
     protected function _alter_table( $alter_type, $table, $field )
     {
-        $sql = 'ALTER TABLE ' . $this->db->escape_identifiers( $table ) . ' ';
+        $sql = 'ALTER TABLE ' . $this->_driver->escape_identifiers( $table ) . ' ';
 
         // DROP has everything it needs now.
         if( $alter_type === 'DROP' )
         {
-            return $sql . 'DROP COLUMN ' . $this->db->escape_identifiers( $field );
+            return $sql . 'DROP COLUMN ' . $this->_driver->escape_identifiers( $field );
         }
 
         $sql .= ( $alter_type === 'ADD' )
@@ -1009,8 +1061,7 @@ abstract class Forge
         $sqls = array();
         for( $i = 0, $c = count( $field ); $i < $c; $i++ )
         {
-            $sqls[ ] = $sql
-                       . ( $field[ $i ][ '_literal' ] !== FALSE ? $field[ $i ][ '_literal' ] : $this->_process_column( $field[ $i ] ) );
+            $sqls[ ] = $sql . ( $field[ $i ][ '_literal' ] !== FALSE ? $field[ $i ][ '_literal' ] : $this->_process_column( $field[ $i ] ) );
         }
 
         return $sqls;
@@ -1021,20 +1072,27 @@ abstract class Forge
     /**
      * Column Drop
      *
-     * @param    string $table       Table name
-     * @param    string $column_name Column name
+     * @param   string $table       Table name
+     * @param   string $column_name Column name
      *
-     * @return    bool
+     * @return  bool
+     * @throws  \Exception
      */
     public function drop_column( $table, $column_name )
     {
-        $sql = $this->_alter_table( 'DROP', $this->db->db_prefix . $table, $column_name );
+        $sql = $this->_alter_table( 'DROP', $this->_driver->prefix_table . $table, $column_name );
+
         if( $sql === FALSE )
         {
-            return ( $this->db->db_debug ) ? $this->db->display_error( 'db_unsupported_feature' ) : FALSE;
+            if( $this->_driver->debug_enabled )
+            {
+                throw new \Exception( 'Unsupported feature of the database platform you are using.' );
+            }
+
+            return FALSE;
         }
 
-        return $this->db->query( $sql );
+        return $this->_driver->query( $sql );
     }
 
     // --------------------------------------------------------------------
@@ -1042,10 +1100,11 @@ abstract class Forge
     /**
      * Column Modify
      *
-     * @param    string $table Table name
-     * @param    string $field Column definition
+     * @param   string $table Table name
+     * @param   string $field Column definition
      *
-     * @return    bool
+     * @return  bool
+     * @throws  \Exception
      */
     public function modify_column( $table, $field )
     {
@@ -1059,20 +1118,31 @@ abstract class Forge
 
         if( count( $this->fields ) === 0 )
         {
-            Exception::show( 'Field information is required.' );
-            //show_error( 'Field information is required.' );
+            if( $this->_driver->debug_enabled )
+            {
+                throw new \Exception( 'Field information is required.' );
+            }
+
+            return FALSE;
         }
 
-        $sqls = $this->_alter_table( 'CHANGE', $this->db->db_prefix . $table, $this->_process_fields() );
+        $sqls = $this->_alter_table( 'CHANGE', $this->_driver->prefix_table . $table, $this->_process_fields() );
+
         $this->_reset();
+
         if( $sqls === FALSE )
         {
-            return ( $this->db->db_debug ) ? $this->db->display_error( 'db_unsupported_feature' ) : FALSE;
+            if( $this->_driver->debug_enabled )
+            {
+                throw new \Exception( 'Unsupported feature of the database platform you are using.' );
+            }
+
+            return FALSE;
         }
 
         for( $i = 0, $c = count( $sqls ); $i < $c; $i++ )
         {
-            if( $this->db->query( $sqls[ $i ] ) === FALSE )
+            if( $this->_driver->query( $sqls[ $i ] ) === FALSE )
             {
                 return FALSE;
             }

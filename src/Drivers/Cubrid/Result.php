@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,39 +29,36 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
-namespace O2System\O2DB\Drivers\Cubrid;
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
+// ------------------------------------------------------------------------
 
+namespace O2System\O2DB\Drivers\Cubrid;
+
+// ------------------------------------------------------------------------
+
+use O2System\O2DB\Interfaces\Result as ResultInterface;
 
 /**
- * Database Driver Class
+ * Cubrid Database Result
  *
- * @package        O2System
- * @subpackage     Drivers
- * @category       Database
- * @author         Steeven Andrian Salim
- * @link           http://o2system.center/framework/user-guide/libraries/database.htm
+ * @author      Circle Creative Developer Team
  */
-class O2System\Libraries\DB_cubrid_result extends \O2System\O2DB\Interfaces\Result
+class Result extends ResultInterface
 {
-
     /**
      * Number of rows in the result set
      *
-     * @return    int
+     * @retur   int
      */
-    public
-    function num_rows()
+    public function num_rows()
     {
         return is_int( $this->num_rows )
             ? $this->num_rows
-            : $this->num_rows = cubrid_num_rows( $this->result_id );
+            : $this->num_rows = cubrid_num_rows( $this->id_result );
     }
 
     // --------------------------------------------------------------------
@@ -71,14 +68,12 @@ class O2System\Libraries\DB_cubrid_result extends \O2System\O2DB\Interfaces\Resu
      *
      * Generates an array of column names
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
-    public
-    function list_fields()
+    public function list_fields()
     {
-        return cubrid_column_names( $this->result_id );
+        return cubrid_column_names( $this->id_result );
     }
 
     // --------------------------------------------------------------------
@@ -88,25 +83,23 @@ class O2System\Libraries\DB_cubrid_result extends \O2System\O2DB\Interfaces\Resu
      *
      * Generates an array of objects containing field meta-data
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
-    public
-    function field_data()
+    public function field_data()
     {
-        $retval = array();
+        $data = array();
 
         for( $i = 0, $c = $this->num_fields(); $i < $c; $i++ )
         {
-            $retval[ $i ] = new \stdClass();
-            $retval[ $i ]->name = cubrid_field_name( $this->result_id, $i );
-            $retval[ $i ]->type = cubrid_field_type( $this->result_id, $i );
-            $retval[ $i ]->max_length = cubrid_field_len( $this->result_id, $i );
-            $retval[ $i ]->primary_key = (int)( strpos( cubrid_field_flags( $this->result_id, $i ), 'primary_key' ) !== FALSE );
+            $data[ $i ] = new \stdClass();
+            $data[ $i ]->name = cubrid_field_name( $this->id_result, $i );
+            $data[ $i ]->type = cubrid_field_type( $this->id_result, $i );
+            $data[ $i ]->max_length = cubrid_field_len( $this->id_result, $i );
+            $data[ $i ]->primary_key = (int)( strpos( cubrid_field_flags( $this->id_result, $i ), 'primary_key' ) !== FALSE );
         }
 
-        return $retval;
+        return $data;
     }
 
     // --------------------------------------------------------------------
@@ -114,14 +107,12 @@ class O2System\Libraries\DB_cubrid_result extends \O2System\O2DB\Interfaces\Resu
     /**
      * Number of fields in the result set
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
-    public
-    function num_fields()
+    public function num_fields()
     {
-        return cubrid_num_fields( $this->result_id );
+        return cubrid_num_fields( $this->id_result );
     }
 
     // --------------------------------------------------------------------
@@ -129,19 +120,17 @@ class O2System\Libraries\DB_cubrid_result extends \O2System\O2DB\Interfaces\Resu
     /**
      * Free the result
      *
-     * @access public
-     *
-     * @return    void
+     * @access  public
+     * @return  void
      */
-    public
-    function free_result()
+    public function free_result()
     {
-        if( is_resource( $this->result_id ) OR
-            ( get_resource_type( $this->result_id ) === 'Unknown' && preg_match( '/Resource id #/', strval( $this->result_id ) ) )
+        if( is_resource( $this->id_result ) OR
+            ( get_resource_type( $this->id_result ) === 'Unknown' && preg_match( '/Resource id #/', strval( $this->id_result ) ) )
         )
         {
-            cubrid_close_request( $this->result_id );
-            $this->result_id = FALSE;
+            cubrid_close_request( $this->id_result );
+            $this->id_result = FALSE;
         }
     }
 
@@ -154,16 +143,14 @@ class O2System\Libraries\DB_cubrid_result extends \O2System\O2DB\Interfaces\Resu
      * this internally before fetching results to make sure the
      * result set starts at zero.
      *
-     * @access public
+     * @param   int $n
      *
-     * @param    int $n
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
-    public
-    function data_seek( $n = 0 )
+    public function data_seek( $n = 0 )
     {
-        return cubrid_data_seek( $this->result_id, $n );
+        return cubrid_data_seek( $this->id_result, $n );
     }
 
     // --------------------------------------------------------------------
@@ -173,14 +160,12 @@ class O2System\Libraries\DB_cubrid_result extends \O2System\O2DB\Interfaces\Resu
      *
      * Returns the result set as an array
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
-    protected
-    function _fetch_assoc()
+    protected function _fetch_assoc()
     {
-        return cubrid_fetch_assoc( $this->result_id );
+        return cubrid_fetch_assoc( $this->id_result );
     }
 
     // --------------------------------------------------------------------
@@ -190,19 +175,14 @@ class O2System\Libraries\DB_cubrid_result extends \O2System\O2DB\Interfaces\Resu
      *
      * Returns the result set as an object
      *
-     * @access protected
+     * @param   string $class_name
      *
-     * @param    string $class_name
-     *
-     * @return    object
+     * @access  protected
+     * @return  object
      */
-    protected
-    function _fetch_object( $class_name = '\stdClass' )
+    protected function _fetch_object( $class_name = '\stdClass' )
     {
-        return cubrid_fetch_object( $this->result_id, $class_name );
+        return cubrid_fetch_object( $this->id_result, $class_name );
     }
 
 }
-
-/* End of file Result.php */
-/* Location: ./o2system/libraries/database/drivers/Cubrid/Result.php */

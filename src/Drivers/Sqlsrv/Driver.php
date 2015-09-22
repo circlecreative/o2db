@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,26 +29,26 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
-namespace O2System\O2DB\Drivers\SQLsrv;
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
+// ------------------------------------------------------------------------
 
+namespace O2System\O2DB\Drivers\Sqlsrv;
 
-class Driver extends \O2System\O2DB
+// ------------------------------------------------------------------------
+
+use O2System\O2DB\Interfaces\Driver as DriverInterface;
+
+/**
+ * Microsoft SQL Server Database Driver
+ *
+ * @author      Circle Creative Developer Team
+ */
+class Driver extends DriverInterface
 {
-
-    /**
-     * Database driver
-     *
-     * @var    string
-     */
-    public $dbdriver = 'sqlsrv';
-
     /**
      * Scrollable flag
      *
@@ -57,7 +57,8 @@ class Driver extends \O2System\O2DB
      * FALSE or SQLSRV_CURSOR_FORWARD would increase performance,
      * but would disable num_rows() (and possibly insert_id())
      *
-     * @var    mixed
+     * @access  public
+     * @type    mixed
      */
     public $scrollable;
 
@@ -66,9 +67,10 @@ class Driver extends \O2System\O2DB
     /**
      * ORDER BY random keyword
      *
-     * @var    array
+     * @access  public
+     * @type    array
      */
-    protected $_random_keyword = array( 'NEWID()', 'RAND(%d)' );
+    protected $_random_keywords = array( 'NEWID()', 'RAND(%d)' );
 
     /**
      * Quoted identifier flag
@@ -76,7 +78,8 @@ class Driver extends \O2System\O2DB
      * Whether to use SQL-92 standard quoted identifier
      * (double quotes) or brackets for identifier escaping.
      *
-     * @var    bool
+     * @access  public
+     * @type    bool
      */
     protected $_quoted_identifier = TRUE;
 
@@ -85,11 +88,9 @@ class Driver extends \O2System\O2DB
     /**
      * Class constructor
      *
-     * @access public
+     * @param   array $params
      *
-     * @param    array $params
-     *
-     * @return    void
+     * @access  public
      */
     public function __construct( $params )
     {
@@ -109,13 +110,12 @@ class Driver extends \O2System\O2DB
     /**
      * Database connection
      *
-     * @access public
+     * @param   bool $pooling
      *
-     * @param    bool $pooling
-     *
-     * @return    resource
+     * @access  public
+     * @return  resource
      */
-    public function db_connect( $pooling = FALSE )
+    public function connect( $pooling = FALSE )
     {
         $charset = in_array( strtolower( $this->charset ), array( 'utf-8', 'utf8' ), TRUE )
             ? 'UTF-8' : SQLSRV_ENC_CHAR;
@@ -137,15 +137,15 @@ class Driver extends \O2System\O2DB
             unset( $connection[ 'UID' ], $connection[ 'PWD' ] );
         }
 
-        $this->conn_id = sqlsrv_connect( $this->hostname, $connection );
+        $this->id_connection = sqlsrv_connect( $this->hostname, $connection );
 
         // Determine how identifiers are escaped
         $query = $this->query( 'SELECT CASE WHEN (@@OPTIONS | 256) = @@OPTIONS THEN 1 ELSE 0 END AS qi' );
         $query = $query->row_array();
         $this->_quoted_identifier = empty( $query ) ? FALSE : (bool)$query[ 'qi' ];
-        $this->_escape_char = ( $this->_quoted_identifier ) ? '"' : array( '[', ']' );
+        $this->_escape_character = ( $this->_quoted_identifier ) ? '"' : array( '[', ']' );
 
-        return $this->conn_id;
+        return $this->id_connection;
     }
 
     // --------------------------------------------------------------------
@@ -153,13 +153,12 @@ class Driver extends \O2System\O2DB
     /**
      * Select the database
      *
-     * @access public
+     * @param   string $database
      *
-     * @param    string $database
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
-    public function db_select( $database = '' )
+    public function select( $database = '' )
     {
         if( $database === '' )
         {
@@ -181,17 +180,16 @@ class Driver extends \O2System\O2DB
     /**
      * Execute the query
      *
-     * @access protected
+     * @param   string $sql An SQL query
      *
-     * @param    string $sql an SQL query
-     *
-     * @return    resource
+     * @access  public
+     * @return  resource
      */
     protected function _execute( $sql )
     {
         return ( $this->scrollable === FALSE OR $this->is_write_type( $sql ) )
-            ? sqlsrv_query( $this->conn_id, $sql )
-            : sqlsrv_query( $this->conn_id, $sql, NULL, array( 'Scrollable' => $this->scrollable ) );
+            ? sqlsrv_query( $this->id_connection, $sql )
+            : sqlsrv_query( $this->id_connection, $sql, NULL, array( 'Scrollable' => $this->scrollable ) );
     }
 
     // --------------------------------------------------------------------
@@ -199,11 +197,10 @@ class Driver extends \O2System\O2DB
     /**
      * Begin Transaction
      *
-     * @access public
+     * @param   bool $test_mode
      *
-     * @param    bool $test_mode
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_begin( $test_mode = FALSE )
     {
@@ -218,7 +215,7 @@ class Driver extends \O2System\O2DB
         // even if the queries produce a successful result.
         $this->_trans_failure = ( $test_mode === TRUE );
 
-        return sqlsrv_begin_transaction( $this->conn_id );
+        return sqlsrv_begin_transaction( $this->id_connection );
     }
 
     // --------------------------------------------------------------------
@@ -226,9 +223,8 @@ class Driver extends \O2System\O2DB
     /**
      * Commit Transaction
      *
-     * @access public
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_commit()
     {
@@ -238,7 +234,7 @@ class Driver extends \O2System\O2DB
             return TRUE;
         }
 
-        return sqlsrv_commit( $this->conn_id );
+        return sqlsrv_commit( $this->id_connection );
     }
 
     // --------------------------------------------------------------------
@@ -246,9 +242,8 @@ class Driver extends \O2System\O2DB
     /**
      * Rollback Transaction
      *
-     * @access public
-     *
-     * @return    bool
+     * @access  public
+     * @return  bool
      */
     public function trans_rollback()
     {
@@ -258,7 +253,7 @@ class Driver extends \O2System\O2DB
             return TRUE;
         }
 
-        return sqlsrv_rollback( $this->conn_id );
+        return sqlsrv_rollback( $this->id_connection );
     }
 
     // --------------------------------------------------------------------
@@ -266,13 +261,12 @@ class Driver extends \O2System\O2DB
     /**
      * Affected Rows
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function affected_rows()
     {
-        return sqlsrv_rows_affected( $this->result_id );
+        return sqlsrv_rows_affected( $this->id_result );
     }
 
     // --------------------------------------------------------------------
@@ -282,9 +276,8 @@ class Driver extends \O2System\O2DB
      *
      * Returns the last id created in the Identity column.
      *
-     * @access public
-     *
-     * @return    string
+     * @access  public
+     * @return  string
      */
     public function insert_id()
     {
@@ -299,11 +292,10 @@ class Driver extends \O2System\O2DB
     /**
      * Returns an object with field data
      *
-     * @access protected
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    array
+     * @access  protected
+     * @return  array
      */
     public function field_data( $table )
     {
@@ -317,17 +309,17 @@ class Driver extends \O2System\O2DB
         }
         $query = $query->result_object();
 
-        $retval = array();
+        $data = array();
         for( $i = 0, $c = count( $query ); $i < $c; $i++ )
         {
-            $retval[ $i ] = new \stdClass();
-            $retval[ $i ]->name = $query[ $i ]->COLUMN_NAME;
-            $retval[ $i ]->type = $query[ $i ]->DATA_TYPE;
-            $retval[ $i ]->max_length = ( $query[ $i ]->CHARACTER_MAXIMUM_LENGTH > 0 ) ? $query[ $i ]->CHARACTER_MAXIMUM_LENGTH : $query[ $i ]->NUMERIC_PRECISION;
-            $retval[ $i ]->default = $query[ $i ]->COLUMN_DEFAULT;
+            $data[ $i ] = new \stdClass();
+            $data[ $i ]->name = $query[ $i ]->COLUMN_NAME;
+            $data[ $i ]->type = $query[ $i ]->DATA_TYPE;
+            $data[ $i ]->max_length = ( $query[ $i ]->CHARACTER_MAXIMUM_LENGTH > 0 ) ? $query[ $i ]->CHARACTER_MAXIMUM_LENGTH : $query[ $i ]->NUMERIC_PRECISION;
+            $data[ $i ]->default = $query[ $i ]->COLUMN_DEFAULT;
         }
 
-        return $retval;
+        return $data;
     }
 
     // --------------------------------------------------------------------
@@ -338,9 +330,8 @@ class Driver extends \O2System\O2DB
      * Returns an array containing code and message of the last
      * database error that has occured.
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function error()
     {
@@ -377,11 +368,10 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific query string so that the table names can be fetched
      *
-     * @access protected
+     * @param   bool $prefix_limit
      *
-     * @param    bool
-     *
-     * @return    string    $prefix_limit
+     * @access  protected
+     * @return  string
      */
     protected function _list_tables( $prefix_limit = FALSE )
     {
@@ -389,9 +379,9 @@ class Driver extends \O2System\O2DB
                . ' FROM ' . $this->escape_identifiers( 'sysobjects' )
                . ' WHERE ' . $this->escape_identifiers( 'type' ) . " = 'U'";
 
-        if( $prefix_limit === TRUE && $this->db_prefix !== '' )
+        if( $prefix_limit === TRUE && $this->prefix_table !== '' )
         {
-            $sql .= ' && ' . $this->escape_identifiers( 'name' ) . " LIKE '" . $this->escape_like_str( $this->db_prefix ) . "%' "
+            $sql .= ' && ' . $this->escape_identifiers( 'name' ) . " LIKE '" . $this->escape_like_string( $this->prefix_table ) . "%' "
                     . sprintf( $this->_escape_like_str, $this->_escape_like_chr );
         }
 
@@ -405,11 +395,10 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific query string so that the column names can be fetched
      *
-     * @access protected
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _list_columns( $table = '' )
     {
@@ -425,17 +414,16 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific update string from the supplied data
      *
-     * @access protected
+     * @param   string $table
+     * @param   array  $values
      *
-     * @param    string $table
-     * @param    array  $values
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _update( $table, $values )
     {
-        $this->qb_limit = FALSE;
-        $this->qb_orderby = array();
+        $this->_limit = FALSE;
+        $this->_order_by = array();
 
         return parent::_update( $table, $values );
     }
@@ -450,11 +438,10 @@ class Driver extends \O2System\O2DB
      * If the database does not support the TRUNCATE statement,
      * then this method maps to 'DELETE FROM table'
      *
-     * @access protected
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _truncate( $table )
     {
@@ -468,17 +455,16 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific delete string from the supplied data
      *
-     * @access protected
+     * @param   string $table
      *
-     * @param    string $table
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _delete( $table )
     {
-        if( $this->qb_limit )
+        if( $this->_limit )
         {
-            return 'WITH ci_delete AS (SELECT TOP ' . $this->qb_limit . ' * FROM ' . $table . $this->_compile_wh( 'qb_where' ) . ') DELETE FROM ci_delete';
+            return 'WITH o2db_delete AS (SELECT TOP ' . $this->_limit . ' * FROM ' . $table . $this->_compile_where( '_where' ) . ') DELETE FROM o2db_delete';
         }
 
         return parent::_delete( $table );
@@ -491,11 +477,10 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific LIMIT clause
      *
-     * @access protected
+     * @param   string $sql SQL Query
      *
-     * @param    string $sql SQL Query
-     *
-     * @return    string
+     * @access  protected
+     * @return  string
      */
     protected function _limit( $sql )
     {
@@ -503,23 +488,23 @@ class Driver extends \O2System\O2DB
         if( version_compare( $this->version(), '11', '>=' ) )
         {
             // SQL Server OFFSET-FETCH can be used only with the ORDER BY clause
-            empty( $this->qb_orderby ) && $sql .= ' ORDER BY 1';
+            empty( $this->_order_by ) && $sql .= ' ORDER BY 1';
 
-            return $sql . ' OFFSET ' . (int)$this->qb_offset . ' ROWS FETCH NEXT ' . $this->qb_limit . ' ROWS ONLY';
+            return $sql . ' OFFSET ' . (int)$this->_offset . ' ROWS FETCH NEXT ' . $this->_limit . ' ROWS ONLY';
         }
 
-        $limit = $this->qb_offset + $this->qb_limit;
+        $limit = $this->_offset + $this->_limit;
 
         // An ORDER BY clause is required for ROW_NUMBER() to work
-        if( $this->qb_offset && ! empty( $this->qb_orderby ) )
+        if( $this->_offset && ! empty( $this->_order_by ) )
         {
-            $orderby = $this->_compile_order_by();
+            $order_by = $this->_compile_order_by();
 
             // We have to strip the ORDER BY clause
-            $sql = trim( substr( $sql, 0, strrpos( $sql, $orderby ) ) );
+            $sql = trim( substr( $sql, 0, strrpos( $sql, $order_by ) ) );
 
-            // Get the fields to select from our subquery, so that we can avoid CI_rownum appearing in the actual results
-            if( count( $this->qb_select ) === 0 )
+            // Get the fields to select from our subquery, so that we can avoid O2DB_rownum appearing in the actual results
+            if( count( $this->_select ) === 0 )
             {
                 $select = '*'; // Inevitable
             }
@@ -529,18 +514,18 @@ class Driver extends \O2System\O2DB
                 $select = array();
                 $field_regexp = ( $this->_quoted_identifier )
                     ? '("[^\"]+")' : '(\[[^\]]+\])';
-                for( $i = 0, $c = count( $this->qb_select ); $i < $c; $i++ )
+                for( $i = 0, $c = count( $this->_select ); $i < $c; $i++ )
                 {
-                    $select[ ] = preg_match( '/(?:\s|\.)' . $field_regexp . '$/i', $this->qb_select[ $i ], $m )
-                        ? $m[ 1 ] : $this->qb_select[ $i ];
+                    $select[ ] = preg_match( '/(?:\s|\.)' . $field_regexp . '$/i', $this->_select[ $i ], $m )
+                        ? $m[ 1 ] : $this->_select[ $i ];
                 }
                 $select = implode( ', ', $select );
             }
 
             return 'SELECT ' . $select . " FROM (\n\n"
-                   . preg_replace( '/^(SELECT( DISTINCT)?)/i', '\\1 ROW_NUMBER() OVER(' . trim( $orderby ) . ') AS ' . $this->escape_identifiers( 'CI_rownum' ) . ', ', $sql )
-                   . "\n\n) " . $this->escape_identifiers( 'CI_subquery' )
-                   . "\nWHERE " . $this->escape_identifiers( 'CI_rownum' ) . ' BETWEEN ' . ( $this->qb_offset + 1 ) . ' && ' . $limit;
+                   . preg_replace( '/^(SELECT( DISTINCT)?)/i', '\\1 ROW_NUMBER() OVER(' . trim( $order_by ) . ') AS ' . $this->escape_identifiers( 'O2DB_rownum' ) . ', ', $sql )
+                   . "\n\n) " . $this->escape_identifiers( 'O2DB_subquery' )
+                   . "\nWHERE " . $this->escape_identifiers( 'O2DB_rownum' ) . ' BETWEEN ' . ( $this->_offset + 1 ) . ' && ' . $limit;
         }
 
         return preg_replace( '/(^\SELECT (DISTINCT)?)/i', '\\1 TOP ' . $limit . ' ', $sql );
@@ -551,9 +536,8 @@ class Driver extends \O2System\O2DB
     /**
      * Database version number
      *
-     * @access public
-     *
-     * @return    string
+     * @access  public
+     * @return  string
      */
     public function version()
     {
@@ -562,7 +546,7 @@ class Driver extends \O2System\O2DB
             return $this->data_cache[ 'version' ];
         }
 
-        if( ! $this->conn_id OR ( $info = sqlsrv_server_info( $this->conn_id ) ) === FALSE )
+        if( ! $this->id_connection OR ( $info = sqlsrv_server_info( $this->id_connection ) ) === FALSE )
         {
             return FALSE;
         }
@@ -577,13 +561,13 @@ class Driver extends \O2System\O2DB
      *
      * Generates a platform-specific insert string from the supplied data.
      *
-     * @access protected
+     * @param   string $table  Table name
+     * @param   array  $keys   INSERT keys
+     * @param   array  $values INSERT values
      *
-     * @param    string $table  Table name
-     * @param    array  $keys   INSERT keys
-     * @param    array  $values INSERT values
-     *
-     * @return    string|bool
+     * @access  protected
+     * @return  string|bool
+     * @throws  \Exception
      */
     protected function _insert_batch( $table, $keys, $values )
     {
@@ -593,7 +577,12 @@ class Driver extends \O2System\O2DB
             return parent::_insert_batch( $table, $keys, $values );
         }
 
-        return ( $this->db->db_debug ) ? $this->db->display_error( 'db_unsupported_feature' ) : FALSE;
+        if( $this->debug_enabled )
+        {
+            throw new \Exception( 'Unsupported feature of the database platform you are using.' );
+        }
+
+        return FALSE;
     }
 
     // --------------------------------------------------------------------
@@ -601,16 +590,12 @@ class Driver extends \O2System\O2DB
     /**
      * Close DB Connection
      *
-     * @access protected
-     *
-     * @return    void
+     * @access  protected
+     * @return  void
      */
     protected function _close()
     {
-        sqlsrv_close( $this->conn_id );
+        sqlsrv_close( $this->id_connection );
     }
 
 }
-
-/* End of file Driver.php */
-/* Location: ./o2system/libraries/database/drivers/SQLsrv/Driver.php */

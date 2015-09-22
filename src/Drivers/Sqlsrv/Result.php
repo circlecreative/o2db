@@ -1,8 +1,8 @@
 <?php
 /**
- * O2System
+ * O2DB
  *
- * An open source application development framework for PHP 5.4 or newer
+ * An open source PHP database engine driver for PHP 5.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -29,36 +29,42 @@
  * @package        O2System
  * @author         Steeven Andrian Salim
  * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2system/license.html
- * @license        http://opensource.org/licenses/MIT	MIT License
- * @link           http://circle-creative.com
- * @since          Version 2.0
+ * @license        http://circle-creative.com/products/o2db/license.html
+ * @license        http://opensource.org/licenses/MIT   MIT License
+ * @link           http://circle-creative.com/products/o2db.html
  * @filesource
  */
-namespace O2System\O2DB\Drivers\SQLsrv;
-defined( 'BASEPATH' ) OR exit( 'No direct script access allowed' );
+// ------------------------------------------------------------------------
 
+namespace O2System\O2DB\Drivers\Sqlsrv;
 
-class Result extends \O2System\O2DB\Interfaces\Forge
+// ------------------------------------------------------------------------
+
+use O2System\O2DB\Interfaces\Result as ResultInterface;
+
+/**
+ * Microsoft SQL Server Database Result
+ *
+ * @author      Circle Creative Developer Team
+ */
+class Result extends ResultInterface
 {
-
     /**
      * Scrollable flag
      *
-     * @var    mixed
+     * @access  public
+     * @type    mixed
      */
     public $scrollable;
 
     // --------------------------------------------------------------------
 
     /**
-     * Constructor
+     * Class constructor
      *
-     * @access public
+     * @param   object $driver_object
      *
-     * @param    object $driver_object
-     *
-     * @return    void
+     * @access  public
      */
     public function __construct( &$driver_object )
     {
@@ -72,9 +78,8 @@ class Result extends \O2System\O2DB\Interfaces\Forge
     /**
      * Number of rows in the result set
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function num_rows()
     {
@@ -86,7 +91,7 @@ class Result extends \O2System\O2DB\Interfaces\Forge
 
         return is_int( $this->num_rows )
             ? $this->num_rows
-            : $this->num_rows = sqlsrv_num_rows( $this->result_id );
+            : $this->num_rows = sqlsrv_num_rows( $this->id_result );
     }
 
     // --------------------------------------------------------------------
@@ -94,13 +99,12 @@ class Result extends \O2System\O2DB\Interfaces\Forge
     /**
      * Number of fields in the result set
      *
-     * @access public
-     *
-     * @return    int
+     * @access  public
+     * @return  int
      */
     public function num_fields()
     {
-        return @sqlsrv_num_fields( $this->result_id );
+        return @sqlsrv_num_fields( $this->id_result );
     }
 
     // --------------------------------------------------------------------
@@ -110,14 +114,13 @@ class Result extends \O2System\O2DB\Interfaces\Forge
      *
      * Generates an array of column names
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function list_fields()
     {
         $field_names = array();
-        foreach( sqlsrv_field_metadata( $this->result_id ) as $offset => $field )
+        foreach( sqlsrv_field_metadata( $this->id_result ) as $offset => $field )
         {
             $field_names[ ] = $field[ 'Name' ];
         }
@@ -132,14 +135,13 @@ class Result extends \O2System\O2DB\Interfaces\Forge
      *
      * Generates an array of objects containing field meta-data
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     public function field_data()
     {
         $retval = array();
-        foreach( sqlsrv_field_metadata( $this->result_id ) as $i => $field )
+        foreach( sqlsrv_field_metadata( $this->id_result ) as $i => $field )
         {
             $retval[ $i ] = new \stdClass();
             $retval[ $i ]->name = $field[ 'Name' ];
@@ -155,16 +157,15 @@ class Result extends \O2System\O2DB\Interfaces\Forge
     /**
      * Free the result
      *
-     * @access public
-     *
-     * @return    void
+     * @access  public
+     * @return  void
      */
     public function free_result()
     {
-        if( is_resource( $this->result_id ) )
+        if( is_resource( $this->id_result ) )
         {
-            sqlsrv_free_stmt( $this->result_id );
-            $this->result_id = FALSE;
+            sqlsrv_free_stmt( $this->id_result );
+            $this->id_result = FALSE;
         }
     }
 
@@ -175,13 +176,12 @@ class Result extends \O2System\O2DB\Interfaces\Forge
      *
      * Returns the result set as an array
      *
-     * @access public
-     *
-     * @return    array
+     * @access  public
+     * @return  array
      */
     protected function _fetch_assoc()
     {
-        return sqlsrv_fetch_array( $this->result_id, SQLSRV_FETCH_ASSOC );
+        return sqlsrv_fetch_array( $this->id_result, SQLSRV_FETCH_ASSOC );
     }
 
     // --------------------------------------------------------------------
@@ -191,18 +191,14 @@ class Result extends \O2System\O2DB\Interfaces\Forge
      *
      * Returns the result set as an object
      *
-     * @access public
+     * @param   string $class_name
      *
-     * @param    string $class_name
-     *
-     * @return    object
+     * @access  protected
+     * @return  object
      */
     protected function _fetch_object( $class_name = '\stdClass' )
     {
-        return sqlsrv_fetch_object( $this->result_id, $class_name );
+        return sqlsrv_fetch_object( $this->id_result, $class_name );
     }
 
 }
-
-/* End of file Result.php */
-/* Location: ./o2system/libraries/database/drivers/SQLsrv/Result.php */
