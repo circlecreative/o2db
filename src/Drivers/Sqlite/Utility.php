@@ -2,7 +2,7 @@
 /**
  * O2DB
  *
- * An open source PHP database engine driver for PHP 5.4 or newer
+ * An open source PDO Wrapper for PHP 5.2.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -26,43 +26,62 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package        O2System
- * @author         Steeven Andrian Salim
- * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2db/license.html
- * @license        http://opensource.org/licenses/MIT   MIT License
- * @link           http://circle-creative.com/products/o2db.html
+ * @package     O2ORM
+ * @author      Steeven Andrian Salim
+ * @copyright   Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
+ * @license     http://circle-creative.com/products/o2db/license.html
+ * @license     http://opensource.org/licenses/MIT  MIT License
+ * @link        http://circle-creative.com
+ * @since       Version 1.0
  * @filesource
  */
 // ------------------------------------------------------------------------
 
-namespace O2System\O2DB\Drivers\Sqlite;
+namespace O2System\DB\Drivers\Sqlite;
 
 // ------------------------------------------------------------------------
 
-use O2System\O2DB\Interfaces\Utility as UtilityInterface;
+use O2System\DB\Interfaces\Utility as UtilityInterface;
 
 /**
- * SQLite Database Utility
+ * SQLite Driver Utility Class
  *
+ * @package     O2DB
+ * @subpackage  Drivers/Sqlite
+ * @category    Driver Class
  * @author      Circle Creative Developer Team
+ * @link        http://circle-creative.com/products/o2db.html
  */
 class Utility extends UtilityInterface
 {
 
     /**
-     * Export
+     * Optimize Table
      *
-     * @param   array   $params Preferences
+     * Optimize database table
      *
-     * @access  protected
+     * @param   string $table Database table name
+     *
+     * @access  public
      * @return  mixed
-     * @throws  \Exception
      */
-    protected function _backup( $params = array() )
+    public function optimize_table( $table )
     {
-        // Currently unsupported
-        throw new \Exception( 'Unsupported feature of the database platform you are using.' );
+        // TODO: Implement optimize_table() method.
     }
 
+    /**
+     * Repair Table
+     *
+     * Repair database table
+     *
+     * @param   string $table Database table name
+     *
+     * @access  public
+     * @return  mixed
+     */
+    public function repair_table( $table )
+    {
+        // TODO: Implement repair_table() method.
+    }
 }

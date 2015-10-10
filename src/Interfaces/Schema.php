@@ -2,7 +2,7 @@
 /**
  * O2DB
  *
- * An open source PHP database engine driver for PHP 5.4 or newer
+ * An open source PDO Wrapper for PHP 5.2.4 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -26,60 +26,74 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package        O2System
- * @author         Steeven Andrian Salim
- * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2db/license.html
- * @license        http://opensource.org/licenses/MIT   MIT License
- * @link           http://circle-creative.com/products/o2db.html
+ * @package     O2ORM
+ * @author      Steeven Andrian Salim
+ * @copyright   Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
+ * @license     http://circle-creative.com/products/o2db/license.html
+ * @license     http://opensource.org/licenses/MIT  MIT License
+ * @link        http://circle-creative.com
+ * @since       Version 1.0
  * @filesource
  */
 // ------------------------------------------------------------------------
 
-namespace O2System\O2DB\Drivers\Sqlsrv;
+namespace O2System\DB\Interfaces;
 
 // ------------------------------------------------------------------------
 
-use O2System\O2DB\Interfaces\Utility as UtilityInterface;
-
 /**
- * Microsoft SQL Server Database Utility
+ * Schema Interface Class
  *
+ * @package     O2DB
+ * @subpackage  Interfaces
+ * @category    Interface Class
  * @author      Circle Creative Developer Team
+ * @link        http://circle-creative.com/products/o2db.html
  */
-class Utility extends UtilityInterface
+abstract class Schema
 {
     /**
-     * List databases statement
+     * List of valid field types
      *
-     * @access  protected
-     * @type    string
+     * @static
+     * @access  public
+     * @type    array
      */
-    protected $_list_databases = 'EXEC sp_helpdb'; // Can also be: EXEC sp_databases
+    public static $valid_field_types = array();
 
     /**
-     * OPTIMIZE TABLE statement
+     * List of valid field relation rules
      *
-     * @access  protected
-     * @type    string
+     * @static
+     * @access  public
+     * @type    array
      */
-    protected $_optimize_table = 'ALTER INDEX all ON %s REORGANIZE';
-
-    // --------------------------------------------------------------------
+    public static $relation_field_rules = array();
 
     /**
-     * Export
+     * List of valid table options
      *
-     * @param   array   $params Preferences
-     *
-     * @access  protected
-     * @return  bool
-     * @throws  \Exception
+     * @static
+     * @access  public
+     * @type    array
      */
-    protected function _backup( $params = array() )
-    {
-        // Currently unsupported
-        throw new \Exception('Unsupported feature of the database platform you are using.');
-    }
+    public static $valid_table_options = array();
 
+    /**
+     * List of valid field options
+     *
+     * @static
+     * @access  public
+     * @type    array
+     */
+    public static $valid_field_options = array();
+
+    /**
+     * Default Record Fields
+     *
+     * @static
+     * @access  public
+     * @type    array
+     */
+    public static $record_fields = array();
 }
