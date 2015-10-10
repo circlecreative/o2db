@@ -14,7 +14,7 @@ We sincerely hope that the developers who use other types of databases, such as 
 
 Installation
 ------------
-The best way to install O2File is to use [Composer][8]
+The best way to install O2DB is to use [Composer][8]
 ```
 composer require o2system/o2db:'dev-master'
 ```
