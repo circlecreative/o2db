@@ -76,7 +76,7 @@ namespace O2System
          * @access  protected
          * @type    array
          */
-        protected $_config;
+        protected static $_config;
 
         /**
          * Active connection
@@ -103,7 +103,7 @@ namespace O2System
                        (! empty($config['default']['username']) AND ! empty($config['default']['password']))
                     )
                     {
-                        $this->_config = $config;
+                        static::$_config = $config;
                     }
                 }
             }
@@ -129,9 +129,9 @@ namespace O2System
             $connection = empty( $connection ) ? 'default' : $connection;
 
             // Load the DB config file if a DSN string wasn't passed
-            if( isset( $this->_config[ $connection ] ) )
+            if( isset( static::$_config[ $connection ] ) )
             {
-                $connection = $this->_config[ $connection ];
+                $connection = static::$_config[ $connection ];
             }
             elseif( is_string( $connection ) && strpos( $connection, '://' ) !== FALSE )
             {

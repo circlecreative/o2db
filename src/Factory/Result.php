@@ -140,7 +140,7 @@ class Result
         {
             $index++;
             $this->_result_object[ $index ] = $result;
-            $this->_result_array[ $index ] = (array)$result->__toArray();
+            $this->_result_array[ $index ] = $result->__toArray();
         }
 
         //print_code($this->_result_object);
