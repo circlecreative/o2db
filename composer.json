@@ -2,7 +2,6 @@
 	"name"              : "o2system/o2db",
 	"description"       : "Database Drivers",
 	"license"           : "MIT",
-	"minimum-stability" : "dev",
 	"version"           : "1.0.0",
 	"type"              : "php-libraries",
 	"keywords"          : [ "utilities", "php", "framework", "driver", "libraries", "database" ],
@@ -38,8 +37,7 @@
 	"minimum-stability" : "dev",
 	"require"           : {
 		"php"              : ">=5.4.0",
-		"o2system/o2glob"  : "*",
-		"o2system/o2gears" : "*"
+		"o2system/o2glob"  : "dev-master"
 	},
 	"autoload"          : {
 		"psr-4" : {
