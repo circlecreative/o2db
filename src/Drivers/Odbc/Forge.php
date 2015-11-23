@@ -36,34 +36,42 @@
  */
 // ------------------------------------------------------------------------
 
-namespace O2System\DB\Drivers\Sqlite;
+namespace O2System\DB\Drivers\Odbc;
 
 // ------------------------------------------------------------------------
 
-use O2System\DB\Exception;
-use O2System\DB\Interfaces\Utility as UtilityInterface;
+use O2System\DB\Interfaces\Forge as ForgeInterface;
 
 /**
- * PDO SQLite Utility Class
+ * PDO ODBC Forge Class
  *
- * Based on CodeIgniter PDO SQLite Utility Class
+ * Based on CodeIgniter PDO ODBC Forge Class
  *
  * @category      Database
  * @author        Circle Creative Developer Team
  * @link          http://o2system.in/features/o2db
  */
-class Utility extends UtilityInterface
+class Forge extends ForgeInterface
 {
 	/**
-	 * Export
+	 * UNSIGNED support
 	 *
-	 * @param    array $params Preferences
-	 *
-	 * @return    mixed
+	 * @type    bool|array
 	 */
-	protected function _backup( $params = array() )
+	protected $_unsigned = FALSE;
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Field attribute AUTO_INCREMENT
+	 *
+	 * @param    array &$attributes
+	 * @param    array &$field
+	 *
+	 * @return    void
+	 */
+	protected function _attr_auto_increment( &$attributes, &$field )
 	{
-		// Currently unsupported
-		throw new Exception('Unsupported feature of the database platform you are using.');
+		// Not supported (in most databases at least)
 	}
 }

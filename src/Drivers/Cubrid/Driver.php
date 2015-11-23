@@ -36,16 +36,16 @@
  */
 // ------------------------------------------------------------------------
 
-namespace O2System\DB\Drivers\Sqlite;
+namespace O2System\DB\Drivers\Cubrid;
 
 // ------------------------------------------------------------------------
 
 use O2System\DB\Interfaces\Driver as DriverInterface;
 
 /**
- * PDO SQLite Driver Adapter Class
+ * PDO Cubrid Driver Adapter Class
  *
- * Based on CodeIgniter PDO SQLite Driver Adapter Class
+ * Based on CodeIgniter PDO Cubrid Driver Adapter Class
  *
  * @category      Database
  * @author        Circle Creative Developer Team
@@ -58,16 +58,21 @@ class Driver extends DriverInterface
 	 *
 	 * @type    string
 	 */
-	public $platform = 'SQLite';
+	public $platform = 'Cubrid';
 
-	// --------------------------------------------------------------------
+	/**
+	 * Identifier escape character
+	 *
+	 * @type    string
+	 */
+	protected $_escape_character = '`';
 
 	/**
 	 * ORDER BY random keyword
 	 *
-	 * @type    array
+	 * @type array
 	 */
-	protected $_random_keywords = ' RANDOM()';
+	protected $_random_keywords = array( 'RANDOM()', 'RANDOM(%d)' );
 
 	// --------------------------------------------------------------------
 
@@ -86,14 +91,11 @@ class Driver extends DriverInterface
 
 		if ( empty( $this->dsn ) )
 		{
-			$this->dsn = 'sqlite:';
+			$this->dsn = 'cubrid:host=' . ( empty( $this->hostname ) ? '127.0.0.1' : $this->hostname );
 
-			if ( empty( $this->database ) && empty( $this->hostname ) )
-			{
-				$this->database = ':memory:';
-			}
-
-			$this->database = empty( $this->database ) ? $this->hostname : $this->database;
+			empty( $this->port ) OR $this->dsn .= ';port=' . $this->port;
+			empty( $this->database ) OR $this->dsn .= ';dbname=' . $this->database;
+			empty( $this->charset ) OR $this->dsn .= ';charset=' . $this->charset;
 		}
 	}
 
@@ -110,12 +112,11 @@ class Driver extends DriverInterface
 	 */
 	protected function _list_tables_statement( $prefix_limit = FALSE )
 	{
-		$sql = 'SELECT "NAME" FROM "SQLITE_MASTER" WHERE "TYPE" = \'table\'';
+		$sql = 'SHOW TABLES';
 
 		if ( $prefix_limit === TRUE && $this->table_prefix !== '' )
 		{
-			return $sql . ' AND "NAME" LIKE \'' . $this->escape_like_string( $this->table_prefix ) . "%' "
-			. sprintf( $this->_like_escape_string, $this->_like_escape_character );
+			return $sql . " LIKE '" . $this->escape_like_string( $this->table_prefix ) . "%'";
 		}
 
 		return $sql;
@@ -134,8 +135,7 @@ class Driver extends DriverInterface
 	 */
 	protected function _list_columns_statement( $table = '' )
 	{
-		// Not supported
-		return FALSE;
+		return 'SHOW COLUMNS FROM ' . $this->protect_identifiers( $table, TRUE, NULL, FALSE );
 	}
 
 	// --------------------------------------------------------------------
@@ -149,26 +149,25 @@ class Driver extends DriverInterface
 	 */
 	public function field_data( $table )
 	{
-		if ( ( $query = $this->query( 'PRAGMA TABLE_INFO(' . $this->protect_identifiers( $table, TRUE, NULL, FALSE ) . ')' ) ) === FALSE )
+		if ( ( $query = $this->query( 'SHOW COLUMNS FROM ' . $this->protect_identifiers( $table, TRUE, NULL, FALSE ) ) ) === FALSE )
 		{
 			return FALSE;
 		}
-
-		$query = $query->result_array();
-		if ( empty( $query ) )
-		{
-			return FALSE;
-		}
+		$query = $query->result_object();
 
 		$result = array();
 		for ( $i = 0, $c = count( $query ); $i < $c; $i++ )
 		{
 			$result[ $i ] = new \stdClass();
-			$result[ $i ]->name = $query[ $i ][ 'name' ];
-			$result[ $i ]->type = $query[ $i ][ 'type' ];
-			$result[ $i ]->max_length = NULL;
-			$result[ $i ]->default = $query[ $i ][ 'dflt_value' ];
-			$result[ $i ]->primary_key = isset( $query[ $i ][ 'pk' ] ) ? (int) $query[ $i ][ 'pk' ] : 0;
+			$result[ $i ]->name = $query[ $i ]->Field;
+
+			sscanf( $query[ $i ]->Type, '%[a-z](%d)',
+			        $result[ $i ]->type,
+			        $result[ $i ]->max_length
+			);
+
+			$result[ $i ]->default = $query[ $i ]->Default;
+			$result[ $i ]->primary_key = (int) ( $query[ $i ]->Key === 'PRI' );
 		}
 
 		return $result;
@@ -177,17 +176,43 @@ class Driver extends DriverInterface
 	// --------------------------------------------------------------------
 
 	/**
-	 * Replace statement
+	 * Update_Batch statement
+	 *
+	 * Generates a platform-specific batch update string from the supplied data
 	 *
 	 * @param    string $table  Table name
-	 * @param    array  $keys   INSERT keys
-	 * @param    array  $values INSERT values
+	 * @param    array  $values Update data
+	 * @param    string $index  WHERE key
 	 *
 	 * @return    string
 	 */
-	protected function _replace( $table, $keys, $values )
+	protected function _update_batch_statement( $table, $values, $index )
 	{
-		return 'INSERT OR ' . parent::_replace( $table, $keys, $values );
+		$ids = array();
+		foreach ( $values as $key => $value )
+		{
+			$ids[] = $value[ $index ];
+
+			foreach ( array_keys( $value ) as $field )
+			{
+				if ( $field !== $index )
+				{
+					$final[ $field ][] = 'WHEN ' . $index . ' = ' . $value[ $index ] . ' THEN ' . $value[ $field ];
+				}
+			}
+		}
+
+		$cases = '';
+		foreach ( $final as $k => $v )
+		{
+			$cases .= $k . " = CASE \n"
+				. implode( "\n", $v ) . "\n"
+				. 'ELSE ' . $k . ' END), ';
+		}
+
+		$this->where( $index . ' IN(' . implode( ',', $ids ) . ')', NULL, FALSE );
+
+		return 'UPDATE ' . $table . ' SET ' . substr( $cases, 0, -2 ) . $this->_compile_where_having( 'qb_where' );
 	}
 
 	// --------------------------------------------------------------------
@@ -206,6 +231,26 @@ class Driver extends DriverInterface
 	 */
 	protected function _truncate_statement( $table )
 	{
-		return 'DELETE FROM ' . $table;
+		return 'TRUNCATE ' . $table;
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * FROM tables
+	 *
+	 * Groups tables in FROM clauses if needed, so there is no confusion
+	 * about operator precedence.
+	 *
+	 * @return    string
+	 */
+	protected function _from_tables()
+	{
+		if ( ! empty( $this->qb_join ) && count( $this->qb_from ) > 1 )
+		{
+			return '(' . implode( ', ', $this->qb_from ) . ')';
+		}
+
+		return implode( ', ', $this->qb_from );
 	}
 }

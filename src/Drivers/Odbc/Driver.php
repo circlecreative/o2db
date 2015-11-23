@@ -36,16 +36,16 @@
  */
 // ------------------------------------------------------------------------
 
-namespace O2System\DB\Drivers\Sqlite;
+namespace O2System\DB\Drivers\Odbc;
 
 // ------------------------------------------------------------------------
 
 use O2System\DB\Interfaces\Driver as DriverInterface;
 
 /**
- * PDO SQLite Driver Adapter Class
+ * PDO ODBC Driver Adapter Class
  *
- * Based on CodeIgniter PDO SQLite Driver Adapter Class
+ * Based on CodeIgniter PDO ODBC Driver Adapter Class
  *
  * @category      Database
  * @author        Circle Creative Developer Team
@@ -58,16 +58,39 @@ class Driver extends DriverInterface
 	 *
 	 * @type    string
 	 */
-	public $platform = 'SQLite';
+	public $platform = 'ODBC';
+
+	/**
+	 * Database schema
+	 *
+	 * @type    string
+	 */
+	public $schema = 'public';
 
 	// --------------------------------------------------------------------
+
+	/**
+	 * Identifier escape character
+	 *
+	 * Must be empty for ODBC.
+	 *
+	 * @type    string
+	 */
+	protected $_escape_character = '';
+
+	/**
+	 * ESCAPE statement string
+	 *
+	 * @type    string
+	 */
+	protected $_like_escape_string = " {escape '%s'} ";
 
 	/**
 	 * ORDER BY random keyword
 	 *
 	 * @type    array
 	 */
-	protected $_random_keywords = ' RANDOM()';
+	protected $_random_keywords = array( 'RND()', 'RND(%d)' );
 
 	// --------------------------------------------------------------------
 
@@ -86,14 +109,54 @@ class Driver extends DriverInterface
 
 		if ( empty( $this->dsn ) )
 		{
-			$this->dsn = 'sqlite:';
+			$this->dsn = 'odbc:';
 
-			if ( empty( $this->database ) && empty( $this->hostname ) )
+			// Pre-defined DSN
+			if ( empty( $this->hostname ) && empty( $this->HOSTNAME ) && empty( $this->port ) && empty( $this->PORT ) )
 			{
-				$this->database = ':memory:';
+				if ( isset( $this->DSN ) )
+				{
+					$this->dsn .= 'DSN=' . $this->DSN;
+				}
+				elseif ( ! empty( $this->database ) )
+				{
+					$this->dsn .= 'DSN=' . $this->database;
+				}
+
+				return;
 			}
 
-			$this->database = empty( $this->database ) ? $this->hostname : $this->database;
+			// If the DSN is not pre-configured - try to build an IBM DB2 connection string
+			$this->dsn .= 'DRIVER=' . ( isset( $this->DRIVER ) ? '{' . $this->DRIVER . '}' : '{IBM DB2 ODBC DRIVER}' ) . ';';
+
+			if ( isset( $this->DATABASE ) )
+			{
+				$this->dsn .= 'DATABASE=' . $this->DATABASE . ';';
+			}
+			elseif ( ! empty( $this->database ) )
+			{
+				$this->dsn .= 'DATABASE=' . $this->database . ';';
+			}
+
+			if ( isset( $this->HOSTNAME ) )
+			{
+				$this->dsn .= 'HOSTNAME=' . $this->HOSTNAME . ';';
+			}
+			else
+			{
+				$this->dsn .= 'HOSTNAME=' . ( empty( $this->hostname ) ? '127.0.0.1;' : $this->hostname . ';' );
+			}
+
+			if ( isset( $this->PORT ) )
+			{
+				$this->dsn .= 'PORT=' . $this->port . ';';
+			}
+			elseif ( ! empty( $this->port ) )
+			{
+				$this->dsn .= ';PORT=' . $this->port . ';';
+			}
+
+			$this->dsn .= 'PROTOCOL=' . ( isset( $this->PROTOCOL ) ? $this->PROTOCOL . ';' : 'TCPIP;' );
 		}
 	}
 
@@ -110,11 +173,11 @@ class Driver extends DriverInterface
 	 */
 	protected function _list_tables_statement( $prefix_limit = FALSE )
 	{
-		$sql = 'SELECT "NAME" FROM "SQLITE_MASTER" WHERE "TYPE" = \'table\'';
+		$sql = "SELECT table_name FROM information_schema.tables WHERE table_schema = '" . $this->schema . "'";
 
-		if ( $prefix_limit === TRUE && $this->table_prefix !== '' )
+		if ( $prefix_limit !== FALSE && $this->table_prefix !== '' )
 		{
-			return $sql . ' AND "NAME" LIKE \'' . $this->escape_like_string( $this->table_prefix ) . "%' "
+			return $sql . " AND table_name LIKE '" . $this->escape_like_string( $this->table_prefix ) . "%' "
 			. sprintf( $this->_like_escape_string, $this->_like_escape_character );
 		}
 
@@ -134,60 +197,27 @@ class Driver extends DriverInterface
 	 */
 	protected function _list_columns_statement( $table = '' )
 	{
-		// Not supported
-		return FALSE;
+		return 'SELECT column_name FROM information_schema.columns WHERE table_name = ' . $this->escape( $table );
 	}
 
 	// --------------------------------------------------------------------
 
 	/**
-	 * Returns an object with field data
+	 * Update statement
+	 *
+	 * Generates a platform-specific update string from the supplied data
 	 *
 	 * @param    string $table
-	 *
-	 * @return    array
-	 */
-	public function field_data( $table )
-	{
-		if ( ( $query = $this->query( 'PRAGMA TABLE_INFO(' . $this->protect_identifiers( $table, TRUE, NULL, FALSE ) . ')' ) ) === FALSE )
-		{
-			return FALSE;
-		}
-
-		$query = $query->result_array();
-		if ( empty( $query ) )
-		{
-			return FALSE;
-		}
-
-		$result = array();
-		for ( $i = 0, $c = count( $query ); $i < $c; $i++ )
-		{
-			$result[ $i ] = new \stdClass();
-			$result[ $i ]->name = $query[ $i ][ 'name' ];
-			$result[ $i ]->type = $query[ $i ][ 'type' ];
-			$result[ $i ]->max_length = NULL;
-			$result[ $i ]->default = $query[ $i ][ 'dflt_value' ];
-			$result[ $i ]->primary_key = isset( $query[ $i ][ 'pk' ] ) ? (int) $query[ $i ][ 'pk' ] : 0;
-		}
-
-		return $result;
-	}
-
-	// --------------------------------------------------------------------
-
-	/**
-	 * Replace statement
-	 *
-	 * @param    string $table  Table name
-	 * @param    array  $keys   INSERT keys
-	 * @param    array  $values INSERT values
+	 * @param    array  $values
 	 *
 	 * @return    string
 	 */
-	protected function _replace( $table, $keys, $values )
+	protected function _update_statement( $table, $values )
 	{
-		return 'INSERT OR ' . parent::_replace( $table, $keys, $values );
+		$this->qb_limit = FALSE;
+		$this->qb_orderby = array();
+
+		return parent::_update_statement( $table, $values );
 	}
 
 	// --------------------------------------------------------------------
@@ -207,5 +237,39 @@ class Driver extends DriverInterface
 	protected function _truncate_statement( $table )
 	{
 		return 'DELETE FROM ' . $table;
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Delete statement
+	 *
+	 * Generates a platform-specific delete string from the supplied data
+	 *
+	 * @param    string    the table name
+	 *
+	 * @return    string
+	 */
+	protected function _delete( $table )
+	{
+		$this->qb_limit = FALSE;
+
+		return parent::_delete( $table );
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * LIMIT
+	 *
+	 * Generates a platform-specific LIMIT clause
+	 *
+	 * @param    string $sql SQL Query
+	 *
+	 * @return    string
+	 */
+	protected function _limit( $sql )
+	{
+		return preg_replace( '/(^\SELECT (DISTINCT)?)/i', '\\1 TOP ' . $this->qb_limit . ' ', $sql );
 	}
 }

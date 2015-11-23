@@ -36,16 +36,16 @@
  */
 // ------------------------------------------------------------------------
 
-namespace O2System\DB\Drivers\Sqlite;
+namespace O2System\DB\Drivers\Oci;
 
 // ------------------------------------------------------------------------
 
 use O2System\DB\Interfaces\Driver as DriverInterface;
 
 /**
- * PDO SQLite Driver Adapter Class
+ * PDO Oracle Driver Adapter Class
  *
- * Based on CodeIgniter PDO SQLite Driver Adapter Class
+ * Based on CodeIgniter PDO Oracle Driver Adapter Class
  *
  * @category      Database
  * @author        Circle Creative Developer Team
@@ -58,16 +58,35 @@ class Driver extends DriverInterface
 	 *
 	 * @type    string
 	 */
-	public $platform = 'SQLite';
+	public $platform = 'Oracle';
 
 	// --------------------------------------------------------------------
+
+	/**
+	 * List of reserved identifiers
+	 *
+	 * Identifiers that must NOT be escaped.
+	 *
+	 * @type    string[]
+	 */
+	protected $_reserved_identifiers = array( '*', 'rownum' );
 
 	/**
 	 * ORDER BY random keyword
 	 *
 	 * @type    array
 	 */
-	protected $_random_keywords = ' RANDOM()';
+	protected $_random_keywords = array( 'ASC', 'ASC' ); // Currently not supported
+
+	/**
+	 * COUNT string
+	 *
+	 * @used-by    O2DB_DB_driver::count_all()
+	 * @used-by    O2DB_DB_query_builder::count_all_results()
+	 *
+	 * @type    string
+	 */
+	protected $_count_string = 'SELECT COUNT(1) AS ';
 
 	// --------------------------------------------------------------------
 
@@ -86,14 +105,27 @@ class Driver extends DriverInterface
 
 		if ( empty( $this->dsn ) )
 		{
-			$this->dsn = 'sqlite:';
+			$this->dsn = 'oci:dbname=';
 
-			if ( empty( $this->database ) && empty( $this->hostname ) )
+			// Oracle has a slightly different PDO DSN format (Easy Connect),
+			// which also supports pre-defined DSNs.
+			if ( empty( $this->hostname ) && empty( $this->port ) )
 			{
-				$this->database = ':memory:';
+				$this->dsn .= $this->database;
+			}
+			else
+			{
+				$this->dsn .= '//' . ( empty( $this->hostname ) ? '127.0.0.1' : $this->hostname )
+					. ( empty( $this->port ) ? '' : ':' . $this->port ) . '/';
+
+				empty( $this->database ) OR $this->dsn .= $this->database;
 			}
 
-			$this->database = empty( $this->database ) ? $this->hostname : $this->database;
+			empty( $this->charset ) OR $this->dsn .= ';charset=' . $this->charset;
+		}
+		elseif ( ! empty( $this->charset ) && strpos( $this->dsn, 'charset=', 4 ) === FALSE )
+		{
+			$this->dsn .= ';charset=' . $this->charset;
 		}
 	}
 
@@ -110,11 +142,11 @@ class Driver extends DriverInterface
 	 */
 	protected function _list_tables_statement( $prefix_limit = FALSE )
 	{
-		$sql = 'SELECT "NAME" FROM "SQLITE_MASTER" WHERE "TYPE" = \'table\'';
+		$sql = 'SELECT "TABLE_NAME" FROM "ALL_TABLES"';
 
 		if ( $prefix_limit === TRUE && $this->table_prefix !== '' )
 		{
-			return $sql . ' AND "NAME" LIKE \'' . $this->escape_like_string( $this->table_prefix ) . "%' "
+			return $sql . ' WHERE "TABLE_NAME" LIKE \'' . $this->escape_like_string( $this->table_prefix ) . "%' "
 			. sprintf( $this->_like_escape_string, $this->_like_escape_character );
 		}
 
@@ -134,8 +166,18 @@ class Driver extends DriverInterface
 	 */
 	protected function _list_columns_statement( $table = '' )
 	{
-		// Not supported
-		return FALSE;
+		if ( strpos( $table, '.' ) !== FALSE )
+		{
+			sscanf( $table, '%[^.].%s', $owner, $table );
+		}
+		else
+		{
+			$owner = $this->username;
+		}
+
+		return 'SELECT COLUMN_NAME FROM ALL_TAB_COLUMNS
+			WHERE UPPER(OWNER) = ' . $this->escape( strtoupper( $owner ) ) . '
+				AND UPPER(TABLE_NAME) = ' . $this->escape( strtoupper( $table ) );
 	}
 
 	// --------------------------------------------------------------------
@@ -149,26 +191,47 @@ class Driver extends DriverInterface
 	 */
 	public function field_data( $table )
 	{
-		if ( ( $query = $this->query( 'PRAGMA TABLE_INFO(' . $this->protect_identifiers( $table, TRUE, NULL, FALSE ) . ')' ) ) === FALSE )
+		if ( strpos( $table, '.' ) !== FALSE )
 		{
-			return FALSE;
+			sscanf( $table, '%[^.].%s', $owner, $table );
+		}
+		else
+		{
+			$owner = $this->username;
 		}
 
-		$query = $query->result_array();
-		if ( empty( $query ) )
+		$sql = 'SELECT COLUMN_NAME, DATA_TYPE, CHAR_LENGTH, DATA_PRECISION, DATA_LENGTH, DATA_DEFAULT, NULLABLE
+			FROM ALL_TAB_COLUMNS
+			WHERE UPPER(OWNER) = ' . $this->escape( strtoupper( $owner ) ) . '
+				AND UPPER(TABLE_NAME) = ' . $this->escape( strtoupper( $table ) );
+
+		if ( ( $query = $this->query( $sql ) ) === FALSE )
 		{
 			return FALSE;
 		}
+		$query = $query->result_object();
 
 		$result = array();
 		for ( $i = 0, $c = count( $query ); $i < $c; $i++ )
 		{
 			$result[ $i ] = new \stdClass();
-			$result[ $i ]->name = $query[ $i ][ 'name' ];
-			$result[ $i ]->type = $query[ $i ][ 'type' ];
-			$result[ $i ]->max_length = NULL;
-			$result[ $i ]->default = $query[ $i ][ 'dflt_value' ];
-			$result[ $i ]->primary_key = isset( $query[ $i ][ 'pk' ] ) ? (int) $query[ $i ][ 'pk' ] : 0;
+			$result[ $i ]->name = $query[ $i ]->COLUMN_NAME;
+			$result[ $i ]->type = $query[ $i ]->DATA_TYPE;
+
+			$length = ( $query[ $i ]->CHAR_LENGTH > 0 )
+				? $query[ $i ]->CHAR_LENGTH : $query[ $i ]->DATA_PRECISION;
+			if ( $length === NULL )
+			{
+				$length = $query[ $i ]->DATA_LENGTH;
+			}
+			$result[ $i ]->max_length = $length;
+
+			$default = $query[ $i ]->DATA_DEFAULT;
+			if ( $default === NULL && $query[ $i ]->NULLABLE === 'N' )
+			{
+				$default = '';
+			}
+			$result[ $i ]->default = $query[ $i ]->COLUMN_DEFAULT;
 		}
 
 		return $result;
@@ -177,7 +240,7 @@ class Driver extends DriverInterface
 	// --------------------------------------------------------------------
 
 	/**
-	 * Replace statement
+	 * Insert batch statement
 	 *
 	 * @param    string $table  Table name
 	 * @param    array  $keys   INSERT keys
@@ -185,27 +248,55 @@ class Driver extends DriverInterface
 	 *
 	 * @return    string
 	 */
-	protected function _replace( $table, $keys, $values )
+	protected function _insert_batch( $table, $keys, $values )
 	{
-		return 'INSERT OR ' . parent::_replace( $table, $keys, $values );
+		$keys = implode( ', ', $keys );
+		$sql = "INSERT ALL\n";
+
+		for ( $i = 0, $c = count( $values ); $i < $c; $i++ )
+		{
+			$sql .= '	INTO ' . $table . ' (' . $keys . ') VALUES ' . $values[ $i ] . "\n";
+		}
+
+		return $sql . 'SELECT * FROM dual';
 	}
 
 	// --------------------------------------------------------------------
 
 	/**
-	 * Truncate statement
+	 * Delete statement
 	 *
-	 * Generates a platform-specific truncate string from the supplied data
-	 *
-	 * If the database does not support the TRUNCATE statement,
-	 * then this method maps to 'DELETE FROM table'
+	 * Generates a platform-specific delete string from the supplied data
 	 *
 	 * @param    string $table
 	 *
 	 * @return    string
 	 */
-	protected function _truncate_statement( $table )
+	protected function _delete( $table )
 	{
-		return 'DELETE FROM ' . $table;
+		if ( $this->qb_limit )
+		{
+			$this->where( 'rownum <= ', $this->qb_limit, FALSE );
+			$this->qb_limit = FALSE;
+		}
+
+		return parent::_delete( $table );
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * LIMIT
+	 *
+	 * Generates a platform-specific LIMIT clause
+	 *
+	 * @param    string $sql SQL Query
+	 *
+	 * @return    string
+	 */
+	protected function _limit( $sql )
+	{
+		return 'SELECT * FROM (SELECT inner_query.*, rownum rnum FROM (' . $sql . ') inner_query WHERE rownum < ' . ( $this->qb_offset + $this->qb_limit + 1 ) . ')'
+		. ( $this->qb_offset ? ' WHERE rnum >= ' . ( $this->qb_offset + 1 ) : '' );
 	}
 }

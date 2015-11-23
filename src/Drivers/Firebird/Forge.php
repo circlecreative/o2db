@@ -36,17 +36,16 @@
  */
 // ------------------------------------------------------------------------
 
-namespace O2System\DB\Drivers\Sqlite;
+namespace O2System\DB\Drivers\Firebird;
 
 // ------------------------------------------------------------------------
 
-use O2System\DB\Exception;
 use O2System\DB\Interfaces\Forge as ForgeInterface;
 
 /**
- * PDO SQLite Forge Class
+ * PDO Firebird Forge Class
  *
- * Based on CodeIgniter PDO SQLite Forge Class
+ * Based on CodeIgniter PDO Firebird Forge Class
  *
  * @category      Database
  * @author        Circle Creative Developer Team
@@ -55,25 +54,22 @@ use O2System\DB\Interfaces\Forge as ForgeInterface;
 class Forge extends ForgeInterface
 {
 	/**
-	 * CREATE TABLE IF statement
+	 * RENAME TABLE statement
 	 *
 	 * @type    string
 	 */
-	protected $_create_table_if = 'CREATE TABLE IF NOT EXISTS';
-
-	/**
-	 * DROP TABLE IF statement
-	 *
-	 * @type    string
-	 */
-	protected $_drop_table_if = 'DROP TABLE IF EXISTS';
+	protected $_rename_table = FALSE;
 
 	/**
 	 * UNSIGNED support
 	 *
-	 * @type    bool|array
+	 * @type    array
 	 */
-	protected $_unsigned = FALSE;
+	protected $_unsigned = array(
+		'SMALLINT' => 'INTEGER',
+		'INTEGER'  => 'INT64',
+		'FLOAT'    => 'DOUBLE PRECISION',
+	);
 
 	/**
 	 * NULL value representation in CREATE/ALTER TABLE statements
@@ -85,36 +81,20 @@ class Forge extends ForgeInterface
 	// --------------------------------------------------------------------
 
 	/**
-	 * Class constructor
-	 *
-	 * @param    object &$db Database object
-	 *
-	 * @return    void
-	 */
-	public function __construct( &$db )
-	{
-		parent::__construct( $db );
-
-		if ( version_compare( $this->_driver->version(), '3.3', '<' ) )
-		{
-			$this->_create_table_if = FALSE;
-		}
-	}
-
-	// --------------------------------------------------------------------
-
-	/**
 	 * Create database
 	 *
-	 * @param    string $db_name (ignored)
+	 * @param    string $db_name
 	 *
-	 * @return    bool
+	 * @return    string
 	 */
-	public function create_database( $db_name = '' )
+	public function create_database( $db_name )
 	{
-		// In SQLite, a database is created when you connect to the database.
-		// We'll return TRUE so that an error isn't generated
-		return TRUE;
+		// Firebird databases are flat files, so a path is required
+
+		// Hostname is needed for remote access
+		empty( $this->_driver->hostname ) OR $db_name = $this->hostname . ':' . $db_name;
+
+		return parent::create_database( '"' . $db_name . '"' );
 	}
 
 	// --------------------------------------------------------------------
@@ -128,28 +108,20 @@ class Forge extends ForgeInterface
 	 */
 	public function drop_database( $db_name = '' )
 	{
-		// In SQLite, a database is dropped when we delete a file
-		if ( file_exists( $this->_driver->database ) )
+		if ( ! ibase_drop_db( $this->conn_id ) )
 		{
-			// We need to close the pseudo-connection first
-			$this->_driver->close();
-			if ( ! @unlink( $this->_driver->database ) )
+			return ( $this->_driver->debug_enabled ) ? $this->_driver->display_error( 'db_unable_to_drop' ) : FALSE;
+		}
+		elseif ( ! empty( $this->_driver->data_cache[ 'db_names' ] ) )
+		{
+			$key = array_search( strtolower( $this->_driver->database ), array_map( 'strtolower', $this->_driver->data_cache[ 'db_names' ] ), TRUE );
+			if ( $key !== FALSE )
 			{
-				throw new Exception('Unable to drop the specified database.');
+				unset( $this->_driver->data_cache[ 'db_names' ][ $key ] );
 			}
-			elseif ( ! empty( $this->_driver->data_cache[ 'db_names' ] ) )
-			{
-				$key = array_search( strtolower( $this->_driver->database ), array_map( 'strtolower', $this->_driver->data_cache[ 'db_names' ] ), TRUE );
-				if ( $key !== FALSE )
-				{
-					unset( $this->_driver->data_cache[ 'db_names' ][ $key ] );
-				}
-			}
-
-			return TRUE;
 		}
 
-		throw new Exception('Unable to drop the specified database.');
+		return TRUE;
 	}
 
 	// --------------------------------------------------------------------
@@ -165,22 +137,48 @@ class Forge extends ForgeInterface
 	 */
 	protected function _alter_table( $alter_type, $table, $field )
 	{
-		if ( $alter_type === 'DROP' OR $alter_type === 'CHANGE' )
+		if ( in_array( $alter_type, array( 'DROP', 'ADD' ), TRUE ) )
 		{
-			// drop_column():
-			//	BEGIN TRANSACTION;
-			//	CREATE TEMPORARY TABLE t1_backup(a,b);
-			//	INSERT INTO t1_backup SELECT a,b FROM t1;
-			//	DROP TABLE t1;
-			//	CREATE TABLE t1(a,b);
-			//	INSERT INTO t1 SELECT a,b FROM t1_backup;
-			//	DROP TABLE t1_backup;
-			//	COMMIT;
-
-			return FALSE;
+			return parent::_alter_table( $alter_type, $table, $field );
 		}
 
-		return parent::_alter_table( $alter_type, $table, $field );
+		$sql = 'ALTER TABLE ' . $this->_driver->escape_identifiers( $table );
+		$sqls = array();
+		for ( $i = 0, $c = count( $field ); $i < $c; $i++ )
+		{
+			if ( $field[ $i ][ '_literal' ] !== FALSE )
+			{
+				return FALSE;
+			}
+
+			if ( isset( $field[ $i ][ 'type' ] ) )
+			{
+				$sqls[] = $sql . ' ALTER COLUMN ' . $this->_driver->escape_identifiers( $field[ $i ][ 'name' ] )
+					. ' TYPE ' . $field[ $i ][ 'type' ] . $field[ $i ][ 'length' ];
+			}
+
+			if ( ! empty( $field[ $i ][ 'default' ] ) )
+			{
+				$sqls[] = $sql . ' ALTER COLUMN ' . $this->_driver->escape_identifiers( $field[ $i ][ 'name' ] )
+					. ' SET DEFAULT ' . $field[ $i ][ 'default' ];
+			}
+
+			if ( isset( $field[ $i ][ 'null' ] ) )
+			{
+				$sqls[] = 'UPDATE "RDB$RELATION_FIELDS" SET "RDB$NULL_FLAG" = '
+					. ( $field[ $i ][ 'null' ] === TRUE ? 'NULL' : '1' )
+					. ' WHERE "RDB$FIELD_NAME" = ' . $this->_driver->escape( $field[ $i ][ 'name' ] )
+					. ' AND "RDB$RELATION_NAME" = ' . $this->_driver->escape( $table );
+			}
+
+			if ( ! empty( $field[ $i ][ 'new_name' ] ) )
+			{
+				$sqls[] = $sql . ' ALTER COLUMN ' . $this->_driver->escape_identifiers( $field[ $i ][ 'name' ] )
+					. ' TO ' . $this->_driver->escape_identifiers( $field[ $i ][ 'new_name' ] );
+			}
+		}
+
+		return $sqls;
 	}
 
 	// --------------------------------------------------------------------
@@ -195,8 +193,7 @@ class Forge extends ForgeInterface
 	protected function _process_column( $field )
 	{
 		return $this->_driver->escape_identifiers( $field[ 'name' ] )
-		. ' ' . $field[ 'type' ]
-		. $field[ 'auto_increment' ]
+		. ' ' . $field[ 'type' ] . $field[ 'length' ]
 		. $field[ 'null' ]
 		. $field[ 'unique' ]
 		. $field[ 'default' ];
@@ -217,9 +214,22 @@ class Forge extends ForgeInterface
 	{
 		switch ( strtoupper( $attributes[ 'TYPE' ] ) )
 		{
-			case 'ENUM':
-			case 'SET':
-				$attributes[ 'TYPE' ] = 'TEXT';
+			case 'TINYINT':
+				$attributes[ 'TYPE' ] = 'SMALLINT';
+				$attributes[ 'UNSIGNED' ] = FALSE;
+
+				return;
+			case 'MEDIUMINT':
+				$attributes[ 'TYPE' ] = 'INTEGER';
+				$attributes[ 'UNSIGNED' ] = FALSE;
+
+				return;
+			case 'INT':
+				$attributes[ 'TYPE' ] = 'INTEGER';
+
+				return;
+			case 'BIGINT':
+				$attributes[ 'TYPE' ] = 'INT64';
 
 				return;
 			default:
@@ -239,15 +249,6 @@ class Forge extends ForgeInterface
 	 */
 	protected function _attr_auto_increment( &$attributes, &$field )
 	{
-		if ( ! empty( $attributes[ 'AUTO_INCREMENT' ] ) && $attributes[ 'AUTO_INCREMENT' ] === TRUE && stripos( $field[ 'type' ], 'int' ) !== FALSE )
-		{
-			$field[ 'type' ] = 'INTEGER PRIMARY KEY';
-			$field[ 'default' ] = '';
-			$field[ 'null' ] = '';
-			$field[ 'unique' ] = '';
-			$field[ 'auto_increment' ] = ' AUTOINCREMENT';
-
-			$this->primary_keys = array();
-		}
+		// Not supported
 	}
 }

@@ -2,7 +2,7 @@
 /**
  * O2DB
  *
- * An open source PDO Wrapper for PHP 5.2.4 or newer
+ * Open Source PHP Data Object Wrapper for PHP 5.4.0 or newer
  *
  * This content is released under the MIT License (MIT)
  *
@@ -32,7 +32,6 @@
  * @license     http://circle-creative.com/products/o2db/license.html
  * @license     http://opensource.org/licenses/MIT  MIT License
  * @link        http://circle-creative.com
- * @since       Version 1.0
  * @filesource
  */
 // ------------------------------------------------------------------------
@@ -41,404 +40,337 @@ namespace O2System\DB\Factory;
 
 // ------------------------------------------------------------------------
 
-/**
- * Result Interface Class
- *
- * @package     O2DB
- * @subpackage  Interfaces
- * @category    Interface Class
- * @author      Circle Creative Developer Team
- * @link        http://circle-creative.com/products/o2db.html
- */
-class Result
+use SeekableIterator;
+use Countable;
+use Serializable;
+
+class Result implements SeekableIterator, Countable, Serializable
 {
-    /**
-     * Result Storage
-     *
-     * @static
-     * @access  protected
-     * @type    array
-     */
-    protected static $_storage;
+	protected $_driver         = NULL;
+	protected $_row_class_name = '\O2System\DB\Factory\Row';
 
-    /**
-     * Connection Class Object
-     *
-     * @access  protected
-     * @type    Connection
-     */
-    protected $_driver;
+	protected $_position = 0;
+	protected $_rows     = array();
+	protected $_num_rows = 0;
 
-    /**
-     * Active Query Result
-     *
-     * @access  protected
-     * @type    \PDO::PDOStatement
-     */
-    protected $_query;
+	// --------------------------------------------------------------------
 
-    /**
-     * Result Array
-     *
-     * @access  protected
-     * @type    array
-     */
-    protected $_result_array = array();
+	/**
+	 * Constructor
+	 *
+	 * @param   object $driver_object
+	 *
+	 * @access  public
+	 */
+	public function __construct( &$driver )
+	{
+		$this->_driver =& $driver;
 
-    /**
-     * Result Array
-     *
-     * @access  protected
-     * @type    array
-     */
-    protected $_result_object = array();
+		if ( isset( $this->_driver->row_class_name ) )
+		{
+			$this->_row_class_name = $this->_driver->row_class_name;
+		}
 
-    /**
-     * Result Into Object
-     *
-     * @access  protected
-     * @type    array
-     */
-    protected $_result_into = array();
+		$this->_fetch_rows();
+	}
 
-    /**
-     * Result Into Class
-     *
-     * @access  protected
-     * @type    array
-     */
-    protected $_result_class = array();
+	// --------------------------------------------------------------------
 
-    /**
-     * Current Row Index
-     *
-     * @access  protected
-     * @type    array
-     */
-    protected $_current_row = 1;
 
-    // ------------------------------------------------------------------------
+	protected function _fetch_rows()
+	{
+		while ( $row = $this->_fetch_object() )
+		{
+			$this->_num_rows++;
+			$this->_rows[] = $row;
+		}
+	}
 
-    /**
-     * Class Constructor
-     *
-     * @param Connection $driver
-     *
-     * @access  public
-     */
-    public function __construct( &$driver, $sql = NULL, $params = array() )
-    {
-        $this->_driver =& $driver;
+	public function seek( $position )
+	{
+		$position = $position < 0 ? 0 : $position;
+		
+		if ( isset( $this->_rows[ $position ] ) )
+		{
+			$this->_position = $position;
 
-        $this->_query = $this->_driver->execute( $sql, $params );
+			return $this->_rows[ $position ];
+		}
 
-        // Set Result Object
-        $this->_query->setFetchMode( \PDO::FETCH_CLASS, '\O2System\DB\Metadata\Result' );
+		return NULL;
+	}
 
-        $index = 0;
-        while( $result = $this->_query->fetch() )
-        {
-            $index++;
-            $this->_result_object[ $index ] = $result;
-            $this->_result_array[ $index ] = $result->__toArray();
-        }
+	public function rewind()
+	{
+		$this->_position = 0;
 
-        //print_code($this->_result_object);
-    }
+		return $this->seek( $this->_position );
+	}
 
-    // ------------------------------------------------------------------------
+	public function current()
+	{
+		return $this->seek( $this->_position );
+	}
 
-    /**
-     * Result
-     *
-     * Return query result rows.
-     *
-     * @param   string $type Result type
-     *
-     * @access  public
-     * @return  mixed
-     */
-    public function result( $type = NULL )
-    {
-        if( is_null( $type ) )
-        {
-            return $this->_result_object;
-        }
-        elseif( is_object( $type ) )
-        {
-            $class_name = get_class( $type );
+	public function key()
+	{
+		return $this->_position;
+	}
 
-            foreach( $this->_result_array as $index => $row )
-            {
-                if( $class_name === 'O2System\ORM\Factory\Result' )
-                {
-                    $reflection = new \ReflectionClass( $type );
-                    $static_properties = $reflection->getStaticProperties();
+	public function next()
+	{
+		++$this->_position;
 
-                    $class_object = new $class_name( $static_properties['_model'] );
-                }
-                else
-                {
-                    $class_object = new $class_name;
-                }
+		return $this->seek( $this->_position );
+	}
 
-                foreach( $row as $key => $value )
-                {
-                    if( method_exists( $class_object, '__set' ) )
-                    {
-                        $class_object->__set( $key, $value );
-                    }
-                    else
-                    {
-                        $class_object->{$key} = $value;
-                    }
-                }
+	public function previous()
+	{
+		--$this->_position;
 
-                $this->_result_into[ $index ] = $class_object;
-            }
+		return $this->seek( $this->_position );
+	}
 
-            return $this->_result_into;
-        }
-        elseif( class_exists( $type ) !== FALSE )
-        {
-            foreach( $this->_result_array as $index => $row )
-            {
-                $args = func_get_args();
+	public function first()
+	{
+		return $this->seek( 0 );
+	}
 
-                if( count( $args == 2 ) )
-                {
-                    $class_name = $args[ 0 ];
-                    $class_object = new $class_name( $args[ 1 ] );
-                }
-                elseif( count( $args == 3 ) )
-                {
-                    $class_name = $args[ 0 ];
-                    $class_object = new $class_name( $args[ 1 ], $args[ 2 ] );
-                }
-                elseif( count( $args == 4 ) )
-                {
-                    $class_name = $args[ 0 ];
-                    $class_object = new $class_name( $args[ 1 ], $args[ 2 ], $args[ 3 ] );
-                }
-                elseif( count( $args == 5 ) )
-                {
-                    $class_name = $args[ 0 ];
-                    $class_object = new $class_name( $args[ 1 ], $args[ 2 ], $args[ 3 ], $args[ 4 ] );
-                }
+	public function last()
+	{
+		return $this->seek( $this->_num_rows - 1 );
+	}
 
-                foreach( $row as $key => $value )
-                {
-                    if( method_exists( $class_object, '__set' ) )
-                    {
-                        $class_object->__set( $key, $value );
-                    }
-                    else
-                    {
-                        $class_object->{$key} = $value;
-                    }
-                }
+	public function valid()
+	{
+		return isset( $this->_rows[ $this->_position ] );
+	}
 
-                $this->_result_class[ $index ] = $class_object;
-            }
+	public function count()
+	{
+		if ( is_int( $this->_num_rows ) )
+		{
+			return $this->_num_rows;
+		}
 
-            return $this->_result_class;
-        }
-        elseif( $type == 'array' )
-        {
-            return $this->_result_array;
-        }
-    }
+		return $this->_num_rows = count( $this->_rows );
+	}
 
-    // ------------------------------------------------------------------------
+	public function serialize()
+	{
+		return serialize( $this->_rows );
+	}
 
-    public function result_array()
-    {
-        return $this->_result_array;
-    }
+	public function unserialize( $rows )
+	{
+		$this->_rows = unserialize( $rows );
+	}
 
-    public function result_object()
-    {
-        return $this->_result_object;
-    }
+	public function __toString()
+	{
+		return json_encode( $this->rows );
+	}
+	
+	public function json()
+	{
+		return $this->__toString();
+	}
 
-    public function result_into()
-    {
-        return $this->_result_into;
-    }
+	/**
+	 * Number of rows in the result set
+	 *
+	 * @return    int
+	 */
+	public function num_rows()
+	{
+		return $this->count();
+	}
 
-    /**
-     * Rows
-     *
-     * Alias for Result Method
-     *
-     * @access  public
-     * @return  mixed
-     */
-    public function rows( $type = NULL )
-    {
-        return $this->result( $type );
-    }
+	// --------------------------------------------------------------------
 
-    // ------------------------------------------------------------------------
+	/**
+	 * Query result. Acts as a wrapper function for the following functions.
+	 *
+	 * @param    string $type 'object', 'array' or a custom class name
+	 *
+	 * @return    array
+	 */
+	public function result()
+	{
+		return $this;
+	}
 
-    /**
-     * Row
-     *
-     * Return single row of query result, by default it's returning the first row.
-     *
-     * @param   int $index Row Index
-     *
-     * @access  public
-     * @return  mixed
-     */
-    public function row( $index = 1, $type = NULL )
-    {
-        $result = $this->result( $type );
+	// --------------------------------------------------------------------
+	/**
+	 * Rows
+	 *
+	 * Alias for Result Method
+	 *
+	 * @access  public
+	 * @return  mixed
+	 */
+	public function rows()
+	{
+		return $this;
+	}
 
-        return isset( $result[ $index ] ) ? $result[ $index ] : NULL;
-    }
+	// ------------------------------------------------------------------------
 
-    // ------------------------------------------------------------------------
+	/**
+	 * Row
+	 *
+	 * Return single row of query result, by default it's returning the first row.
+	 *
+	 * @param   int $index Row Index
+	 *
+	 * @access  public
+	 * @return  mixed
+	 */
+	public function row( $position = 0 )
+	{
+		return $this->seek( $position );
+	}
 
-    /**
-     * First Row
-     *
-     * Return first row of query result.
-     *
-     * @access  public
-     * @return  mixed
-     */
-    public function first_row( $type = NULL )
-    {
-        $result = $this->result( $type );
+	// ------------------------------------------------------------------------
 
-        return ( count( $result ) === 0 ) ? NULL : reset( $result );
-    }
+	/**
+	 * The following methods are normally overloaded by the identically named
+	 * methods in the platform-specific driver -- except when query caching
+	 * is used. When caching is enabled we do not load the other driver.
+	 * These functions are primarily here to prevent undefined function errors
+	 * when a cached result object is in use. They are not otherwise fully
+	 * operational due to the unavailability of the database resource IDs with
+	 * cached results.
+	 */
 
-    // ------------------------------------------------------------------------
+	// --------------------------------------------------------------------
 
-    /**
-     * Last Row
-     *
-     * Return last row of query result.
-     *
-     * @access  public
-     * @return  mixed
-     */
-    public function last_row( $type = NULL )
-    {
-        $result = $this->result( $type );
+	/**
+	 * Number of fields in the result set
+	 *
+	 * Overridden by driver result classes.
+	 *
+	 * @return    int
+	 */
+	public function num_fields()
+	{
+		return $this->_driver->pdo_statement->columnCount();
+	}
 
-        return ( count( $result ) === 0 ) ? NULL : end( $result );
-    }
+	// --------------------------------------------------------------------
 
-    // ------------------------------------------------------------------------
+	/**
+	 * Fetch Field Names
+	 *
+	 * Generates an array of column names.
+	 *
+	 * Overridden by driver result classes.
+	 *
+	 * @return    array
+	 */
+	public function fields_list()
+	{
+		$field_names = array();
+		for ( $i = 0, $c = $this->num_fields(); $i < $c; $i++ )
+		{
+			// Might trigger an E_WARNING due to not all subdrivers
+			// supporting getColumnMeta()
+			$field_names[ $i ] = @$this->_driver->pdo_statement->getColumnMeta( $i );
+			$field_names[ $i ] = $field_names[ $i ][ 'name' ];
+		}
 
-    /**
-     * Returns the "next" row
-     *
-     * @param    string $type
-     *
-     * @return    mixed
-     */
-    public function next_row( $type = 'object' )
-    {
-        $result = $this->result( $type );
+		return $field_names;
+	}
 
-        if( count( $result ) === 0 )
-        {
-            return NULL;
-        }
+	// --------------------------------------------------------------------
 
-        return isset( $result[ $this->_current_row + 1 ] )
-            ? $result[ ++$this->_current_row ]
-            : NULL;
-    }
+	/**
+	 * Field data
+	 *
+	 * Generates an array of objects containing field meta-data.
+	 *
+	 * Overridden by driver result classes.
+	 *
+	 * @return    array
+	 */
+	public function fields_metadata()
+	{
+		try
+		{
+			$result = array();
 
-    // --------------------------------------------------------------------
+			for ( $i = 0, $c = $this->num_fields(); $i < $c; $i++ )
+			{
+				$field = $this->_driver->pdo_statement->getColumnMeta( $i );
 
-    /**
-     * Returns the "previous" row
-     *
-     * @param    string $type
-     *
-     * @return    mixed
-     */
-    public function previous_row( $type = 'object' )
-    {
-        $result = $this->result( $type );
-        if( count( $result ) === 0 )
-        {
-            return NULL;
-        }
+				$result[ $i ] = new \stdClass();
+				$result[ $i ]->name = $field[ 'name' ];
+				$result[ $i ]->type = $field[ 'native_type' ];
+				$result[ $i ]->max_length = ( $field[ 'len' ] > 0 ) ? $field[ 'len' ] : NULL;
+				$result[ $i ]->primary_key = (int) ( ! empty( $field[ 'flags' ] ) && in_array( 'primary_key', $field[ 'flags' ], TRUE ) );
+			}
 
-        if( isset( $result[ $this->_current_row - 1 ] ) )
-        {
-            --$this->_current_row;
-        }
+			return $result;
+		}
+		catch ( \Exception $e )
+		{
+			throw new \BadMethodCallException( 'Unsupported feature of the database platform you are using.' );
+		}
+	}
 
-        return $result[ $this->_current_row ];
-    }
+	// --------------------------------------------------------------------
 
-    // --------------------------------------------------------------------
+	/**
+	 * Free the result
+	 *
+	 * Overridden by driver result classes.
+	 *
+	 * @return    void
+	 */
+	public function destroy()
+	{
+		if ( is_object( $this->_driver->pdo_statement ) )
+		{
+			$this->_driver->pdo_statement = FALSE;
+		}
+	}
 
-    /**
-     * Num Rows
-     *
-     * The number of rows returned by the query.
-     *
-     * @access  public
-     * @return  int
-     */
-    public function num_rows()
-    {
-        return empty( $this->_result_array ) ? 0 : count( $this->_result_array );
-    }
+	// --------------------------------------------------------------------
 
-    // ------------------------------------------------------------------------
+	/**
+	 * Result - associative array
+	 *
+	 * Returns the result set as an array.
+	 *
+	 * Overridden by driver result classes.
+	 *
+	 * @return    array
+	 */
+	protected function _fetch_assoc()
+	{
+		return $this->_driver->pdo_statement->fetch( \PDO::FETCH_ASSOC );
+	}
 
-    /**
-     * Num Fields
-     *
-     * The number of FIELDS (columns) returned by the query.
-     *
-     * @access  public
-     * @return  bool|int
-     */
-    public function num_fields()
-    {
-        $row = $this->first_row( 'array' );
+	// --------------------------------------------------------------------
 
-        if( ! empty( $row ) )
-        {
-            foreach( $row as $key => $value )
-            {
-                $fields[ ] = $key;
-            }
+	/**
+	 * Result - object
+	 *
+	 * Returns the result set as an object.
+	 *
+	 * Overridden by driver result classes.
+	 *
+	 * @param    string $class_name
+	 *
+	 * @return    object
+	 */
+	protected function _fetch_object()
+	{
+		if ( isset( $this->_driver->row_class_args ) )
+		{
+			return $this->_driver->pdo_statement->fetchObject( $this->_row_class_name, $this->_driver->row_class_args );
+		}
 
-            return count( $fields );
-        }
-
-        return 0;
-    }
-
-    // ------------------------------------------------------------------------
-
-    /**
-     * Free Result
-     *
-     * It frees the memory associated with the result and deletes the result resource ID.
-     * Normally PHP frees its memory automatically at the end of script execution.
-     * However, if you are running a lot of queries in a particular script you might want to free
-     * the result after each query result has been generated in order to cut down on memory consumptions.
-     *
-     * @access  public
-     */
-    public function free_result()
-    {
-        $this->_query = NULL;
-        $this->_current_row = 1;
-        $this->_result_array = array();
-        $this->_result_object = array();
-    }
+		return $this->_driver->pdo_statement->fetchObject( $this->_row_class_name );
+	}
 }

@@ -36,16 +36,16 @@
  */
 // ------------------------------------------------------------------------
 
-namespace O2System\DB\Drivers\MySQL;
+namespace O2System\DB\Drivers\Cubrid;
 
 // ------------------------------------------------------------------------
 
 use O2System\DB\Interfaces\Forge as ForgeInterface;
 
 /**
- * PDO MySQL Forge Class
+ * PDO Cubrid Forge Class
  *
- * Based on CodeIgniter PDO MySQL Forge Class
+ * Based on CodeIgniter PDO Cubrid Forge Class
  *
  * @category      Database
  * @author        Circle Creative Developer Team
@@ -58,14 +58,14 @@ class Forge extends ForgeInterface
 	 *
 	 * @type    string
 	 */
-	protected $_create_database = 'CREATE DATABASE %s CHARACTER SET %s COLLATE %s';
+	protected $_create_database = FALSE;
 
 	/**
-	 * CREATE TABLE IF statement
+	 * DROP DATABASE statement
 	 *
 	 * @type    string
 	 */
-	protected $_create_table_if = 'CREATE TABLE IF NOT EXISTS';
+	protected $_drop_database = FALSE;
 
 	/**
 	 * CREATE TABLE keys flag
@@ -90,60 +90,14 @@ class Forge extends ForgeInterface
 	 * @type    array
 	 */
 	protected $_unsigned = array(
-		'TINYINT',
-		'SMALLINT',
-		'MEDIUMINT',
-		'INT',
-		'INTEGER',
-		'BIGINT',
-		'REAL',
-		'DOUBLE',
-		'DOUBLE PRECISION',
-		'FLOAT',
-		'DECIMAL',
-		'NUMERIC',
+		'SHORT'    => 'INTEGER',
+		'SMALLINT' => 'INTEGER',
+		'INT'      => 'BIGINT',
+		'INTEGER'  => 'BIGINT',
+		'BIGINT'   => 'NUMERIC',
+		'FLOAT'    => 'DOUBLE',
+		'REAL'     => 'DOUBLE',
 	);
-
-	/**
-	 * NULL value representation in CREATE/ALTER TABLE statements
-	 *
-	 * @type    string
-	 */
-	protected $_null = 'NULL';
-
-	// --------------------------------------------------------------------
-
-	/**
-	 * CREATE TABLE attributes
-	 *
-	 * @param    array $attributes Associative array of table attributes
-	 *
-	 * @return    string
-	 */
-	protected function _create_table_attr( $attributes )
-	{
-		$sql = '';
-
-		foreach ( array_keys( $attributes ) as $key )
-		{
-			if ( is_string( $key ) )
-			{
-				$sql .= ' ' . strtoupper( $key ) . ' = ' . $attributes[ $key ];
-			}
-		}
-
-		if ( ! empty( $this->_driver->charset ) && ! strpos( $sql, 'CHARACTER SET' ) && ! strpos( $sql, 'CHARSET' ) )
-		{
-			$sql .= ' DEFAULT CHARACTER SET = ' . $this->_driver->charset;
-		}
-
-		if ( ! empty( $this->_driver->collate ) && ! strpos( $sql, 'COLLATE' ) )
-		{
-			$sql .= ' COLLATE = ' . $this->_driver->collate;
-		}
-
-		return $sql;
-	}
 
 	// --------------------------------------------------------------------
 
@@ -158,34 +112,27 @@ class Forge extends ForgeInterface
 	 */
 	protected function _alter_table( $alter_type, $table, $field )
 	{
-		if ( $alter_type === 'DROP' )
+		if ( in_array( $alter_type, array( 'DROP', 'ADD' ), TRUE ) )
 		{
 			return parent::_alter_table( $alter_type, $table, $field );
 		}
 
 		$sql = 'ALTER TABLE ' . $this->_driver->escape_identifiers( $table );
+		$sqls = array();
 		for ( $i = 0, $c = count( $field ); $i < $c; $i++ )
 		{
 			if ( $field[ $i ][ '_literal' ] !== FALSE )
 			{
-				$field[ $i ] = ( $alter_type === 'ADD' ) ? "\n\tADD " . $field[ $i ][ '_literal' ] : "\n\tMODIFY " . $field[ $i ][ '_literal' ];
+				$sqls[] = $sql . ' CHANGE ' . $field[ $i ][ '_literal' ];
 			}
 			else
 			{
-				if ( $alter_type === 'ADD' )
-				{
-					$field[ $i ][ '_literal' ] = "\n\tADD ";
-				}
-				else
-				{
-					$field[ $i ][ '_literal' ] = empty( $field[ $i ][ 'new_name' ] ) ? "\n\tMODIFY " : "\n\tCHANGE ";
-				}
-
-				$field[ $i ] = $field[ $i ][ '_literal' ] . $this->_process_column( $field[ $i ] );
+				$alter_type = empty( $field[ $i ][ 'new_name' ] ) ? ' MODIFY ' : ' CHANGE ';
+				$sqls[] = $sql . $alter_type . $this->_process_column( $field[ $i ] );
 			}
 		}
 
-		return array( $sql . implode( ',', $field ) );
+		return $sqls;
 	}
 
 	// --------------------------------------------------------------------
@@ -199,14 +146,53 @@ class Forge extends ForgeInterface
 	 */
 	protected function _process_column( $field )
 	{
-		$extra_clause = isset( $field[ 'after' ] ) ? ' AFTER ' . $this->_driver->escape_identifiers( $field[ 'after' ] ) : '';
+		$extra_clause = isset( $field[ 'after' ] )
+			? ' AFTER ' . $this->_driver->escape_identifiers( $field[ 'after' ] ) : '';
 
 		if ( empty( $extra_clause ) && isset( $field[ 'first' ] ) && $field[ 'first' ] === TRUE )
 		{
 			$extra_clause = ' FIRST';
 		}
 
-		return $this->_driver->escape_identifiers( $field[ 'name' ] ) . ( empty( $field[ 'new_name' ] ) ? '' : ' ' . $this->_driver->escape_identifiers( $field[ 'new_name' ] ) ) . ' ' . $field[ 'type' ] . $field[ 'length' ] . $field[ 'unsigned' ] . $field[ 'null' ] . $field[ 'default' ] . $field[ 'auto_increment' ] . $field[ 'unique' ] . ( empty( $field[ 'comment' ] ) ? '' : ' COMMENT ' . $field[ 'comment' ] ) . $extra_clause;
+		return $this->_driver->escape_identifiers( $field[ 'name' ] )
+		. ( empty( $field[ 'new_name' ] ) ? '' : ' ' . $this->_driver->escape_identifiers( $field[ 'new_name' ] ) )
+		. ' ' . $field[ 'type' ] . $field[ 'length' ]
+		. $field[ 'unsigned' ]
+		. $field[ 'null' ]
+		. $field[ 'default' ]
+		. $field[ 'auto_increment' ]
+		. $field[ 'unique' ]
+		. $extra_clause;
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Field attribute TYPE
+	 *
+	 * Performs a data type mapping between different databases.
+	 *
+	 * @param    array &$attributes
+	 *
+	 * @return    void
+	 */
+	protected function _attr_type( &$attributes )
+	{
+		switch ( strtoupper( $attributes[ 'TYPE' ] ) )
+		{
+			case 'TINYINT':
+				$attributes[ 'TYPE' ] = 'SMALLINT';
+				$attributes[ 'UNSIGNED' ] = FALSE;
+
+				return;
+			case 'MEDIUMINT':
+				$attributes[ 'TYPE' ] = 'INTEGER';
+				$attributes[ 'UNSIGNED' ] = FALSE;
+
+				return;
+			default:
+				return;
+		}
 	}
 
 	// --------------------------------------------------------------------
@@ -243,7 +229,8 @@ class Forge extends ForgeInterface
 
 			is_array( $this->keys[ $i ] ) OR $this->keys[ $i ] = array( $this->keys[ $i ] );
 
-			$sql .= ",\n\tKEY " . $this->_driver->escape_identifiers( implode( '_', $this->keys[ $i ] ) ) . ' (' . implode( ', ', $this->_driver->escape_identifiers( $this->keys[ $i ] ) ) . ')';
+			$sql .= ",\n\tKEY " . $this->_driver->escape_identifiers( implode( '_', $this->keys[ $i ] ) )
+				. ' (' . implode( ', ', $this->_driver->escape_identifiers( $this->keys[ $i ] ) ) . ')';
 		}
 
 		$this->keys = array();

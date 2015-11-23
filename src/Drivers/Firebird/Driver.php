@@ -36,16 +36,16 @@
  */
 // ------------------------------------------------------------------------
 
-namespace O2System\DB\Drivers\Sqlite;
+namespace O2System\DB\Drivers\Firebird;
 
 // ------------------------------------------------------------------------
 
 use O2System\DB\Interfaces\Driver as DriverInterface;
 
 /**
- * PDO SQLite Driver Adapter Class
+ * PDO Firebird Driver Adapter Class
  *
- * Based on CodeIgniter PDO SQLite Driver Adapter Class
+ * Based on CodeIgniter PDO Firebird Driver Adapter Class
  *
  * @category      Database
  * @author        Circle Creative Developer Team
@@ -58,7 +58,7 @@ class Driver extends DriverInterface
 	 *
 	 * @type    string
 	 */
-	public $platform = 'SQLite';
+	public $platform = 'Firebird';
 
 	// --------------------------------------------------------------------
 
@@ -67,7 +67,7 @@ class Driver extends DriverInterface
 	 *
 	 * @type    array
 	 */
-	protected $_random_keywords = ' RANDOM()';
+	protected $_random_keywords = array( 'RAND()', 'RAND()' );
 
 	// --------------------------------------------------------------------
 
@@ -86,14 +86,23 @@ class Driver extends DriverInterface
 
 		if ( empty( $this->dsn ) )
 		{
-			$this->dsn = 'sqlite:';
+			$this->dsn = 'firebird:';
 
-			if ( empty( $this->database ) && empty( $this->hostname ) )
+			if ( ! empty( $this->database ) )
 			{
-				$this->database = ':memory:';
+				$this->dsn .= 'dbname=' . $this->database;
+			}
+			elseif ( ! empty( $this->hostname ) )
+			{
+				$this->dsn .= 'dbname=' . $this->hostname;
 			}
 
-			$this->database = empty( $this->database ) ? $this->hostname : $this->database;
+			empty( $this->charset ) OR $this->dsn .= ';charset=' . $this->charset;
+			empty( $this->role ) OR $this->dsn .= ';role=' . $this->role;
+		}
+		elseif ( ! empty( $this->charset ) && strpos( $this->dsn, 'charset=', 9 ) === FALSE )
+		{
+			$this->dsn .= ';charset=' . $this->charset;
 		}
 	}
 
@@ -110,11 +119,11 @@ class Driver extends DriverInterface
 	 */
 	protected function _list_tables_statement( $prefix_limit = FALSE )
 	{
-		$sql = 'SELECT "NAME" FROM "SQLITE_MASTER" WHERE "TYPE" = \'table\'';
+		$sql = 'SELECT "RDB$RELATION_NAME" FROM "RDB$RELATIONS" WHERE "RDB$RELATION_NAME" NOT LIKE \'RDB$%\' AND "RDB$RELATION_NAME" NOT LIKE \'MON$%\'';
 
 		if ( $prefix_limit === TRUE && $this->table_prefix !== '' )
 		{
-			return $sql . ' AND "NAME" LIKE \'' . $this->escape_like_string( $this->table_prefix ) . "%' "
+			return $sql . ' AND "RDB$RELATION_NAME" LIKE \'' . $this->escape_like_string( $this->table_prefix ) . "%' "
 			. sprintf( $this->_like_escape_string, $this->_like_escape_character );
 		}
 
@@ -134,8 +143,7 @@ class Driver extends DriverInterface
 	 */
 	protected function _list_columns_statement( $table = '' )
 	{
-		// Not supported
-		return FALSE;
+		return 'SELECT "RDB$FIELD_NAME" FROM "RDB$RELATION_FIELDS" WHERE "RDB$RELATION_NAME" = ' . $this->escape( $table );
 	}
 
 	// --------------------------------------------------------------------
@@ -149,45 +157,53 @@ class Driver extends DriverInterface
 	 */
 	public function field_data( $table )
 	{
-		if ( ( $query = $this->query( 'PRAGMA TABLE_INFO(' . $this->protect_identifiers( $table, TRUE, NULL, FALSE ) . ')' ) ) === FALSE )
-		{
-			return FALSE;
-		}
+		$sql = 'SELECT "rfields"."RDB$FIELD_NAME" AS "name",
+				CASE "fields"."RDB$FIELD_TYPE"
+					WHEN 7 THEN \'SMALLINT\'
+					WHEN 8 THEN \'INTEGER\'
+					WHEN 9 THEN \'QUAD\'
+					WHEN 10 THEN \'FLOAT\'
+					WHEN 11 THEN \'DFLOAT\'
+					WHEN 12 THEN \'DATE\'
+					WHEN 13 THEN \'TIME\'
+					WHEN 14 THEN \'CHAR\'
+					WHEN 16 THEN \'INT64\'
+					WHEN 27 THEN \'DOUBLE\'
+					WHEN 35 THEN \'TIMESTAMP\'
+					WHEN 37 THEN \'VARCHAR\'
+					WHEN 40 THEN \'CSTRING\'
+					WHEN 261 THEN \'BLOB\'
+					ELSE NULL
+				END AS "type",
+				"fields"."RDB$FIELD_LENGTH" AS "max_length",
+				"rfields"."RDB$DEFAULT_VALUE" AS "default"
+			FROM "RDB$RELATION_FIELDS" "rfields"
+				JOIN "RDB$FIELDS" "fields" ON "rfields"."RDB$FIELD_SOURCE" = "fields"."RDB$FIELD_NAME"
+			WHERE "rfields"."RDB$RELATION_NAME" = ' . $this->escape( $table ) . '
+			ORDER BY "rfields"."RDB$FIELD_POSITION"';
 
-		$query = $query->result_array();
-		if ( empty( $query ) )
-		{
-			return FALSE;
-		}
-
-		$result = array();
-		for ( $i = 0, $c = count( $query ); $i < $c; $i++ )
-		{
-			$result[ $i ] = new \stdClass();
-			$result[ $i ]->name = $query[ $i ][ 'name' ];
-			$result[ $i ]->type = $query[ $i ][ 'type' ];
-			$result[ $i ]->max_length = NULL;
-			$result[ $i ]->default = $query[ $i ][ 'dflt_value' ];
-			$result[ $i ]->primary_key = isset( $query[ $i ][ 'pk' ] ) ? (int) $query[ $i ][ 'pk' ] : 0;
-		}
-
-		return $result;
+		return ( ( $query = $this->query( $sql ) ) !== FALSE )
+			? $query->result_object()
+			: FALSE;
 	}
 
 	// --------------------------------------------------------------------
 
 	/**
-	 * Replace statement
+	 * Update statement
 	 *
-	 * @param    string $table  Table name
-	 * @param    array  $keys   INSERT keys
-	 * @param    array  $values INSERT values
+	 * Generates a platform-specific update string from the supplied data
+	 *
+	 * @param    string $table
+	 * @param    array  $values
 	 *
 	 * @return    string
 	 */
-	protected function _replace( $table, $keys, $values )
+	protected function _update_statement( $table, $values )
 	{
-		return 'INSERT OR ' . parent::_replace( $table, $keys, $values );
+		$this->qb_limit = FALSE;
+
+		return parent::_update_statement( $table, $values );
 	}
 
 	// --------------------------------------------------------------------
@@ -207,5 +223,51 @@ class Driver extends DriverInterface
 	protected function _truncate_statement( $table )
 	{
 		return 'DELETE FROM ' . $table;
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Delete statement
+	 *
+	 * Generates a platform-specific delete string from the supplied data
+	 *
+	 * @param    string $table
+	 *
+	 * @return    string
+	 */
+	protected function _delete( $table )
+	{
+		$this->qb_limit = FALSE;
+
+		return parent::_delete( $table );
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * LIMIT
+	 *
+	 * Generates a platform-specific LIMIT clause
+	 *
+	 * @param    string $sql SQL Query
+	 *
+	 * @return    string
+	 */
+	protected function _limit( $sql )
+	{
+		// Limit clause depends on if Interbase or Firebird
+		if ( stripos( $this->version(), 'firebird' ) !== FALSE )
+		{
+			$select = 'FIRST ' . $this->qb_limit
+				. ( $this->qb_offset > 0 ? ' SKIP ' . $this->qb_offset : '' );
+		}
+		else
+		{
+			$select = 'ROWS '
+				. ( $this->qb_offset > 0 ? $this->qb_offset . ' TO ' . ( $this->qb_limit + $this->qb_offset ) : $this->qb_limit );
+		}
+
+		return preg_replace( '`SELECT`i', 'SELECT ' . $select, $sql );
 	}
 }

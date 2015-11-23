@@ -36,7 +36,7 @@
  */
 // ------------------------------------------------------------------------
 
-namespace O2System\DB\Drivers\Sqlite;
+namespace O2System\DB\Drivers\Pgsql;
 
 // ------------------------------------------------------------------------
 
@@ -44,9 +44,9 @@ use O2System\DB\Exception;
 use O2System\DB\Interfaces\Utility as UtilityInterface;
 
 /**
- * PDO SQLite Utility Class
+ * PDO PostgreSQL Utility Class
  *
- * Based on CodeIgniter PDO SQLite Utility Class
+ * Based on CodeIgniter PDO PostgreSQL Utility Class
  *
  * @category      Database
  * @author        Circle Creative Developer Team
@@ -54,6 +54,22 @@ use O2System\DB\Interfaces\Utility as UtilityInterface;
  */
 class Utility extends UtilityInterface
 {
+	/**
+	 * List databases statement
+	 *
+	 * @type    string
+	 */
+	protected $_list_databases = 'SELECT datname FROM pg_database';
+
+	/**
+	 * OPTIMIZE TABLE statement
+	 *
+	 * @type    string
+	 */
+	protected $_optimize_table = 'REINDEX TABLE %s';
+
+	// --------------------------------------------------------------------
+
 	/**
 	 * Export
 	 *

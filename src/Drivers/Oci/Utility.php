@@ -36,7 +36,7 @@
  */
 // ------------------------------------------------------------------------
 
-namespace O2System\DB\Drivers\Sqlite;
+namespace O2System\DB\Drivers\Oci;
 
 // ------------------------------------------------------------------------
 
@@ -44,9 +44,9 @@ use O2System\DB\Exception;
 use O2System\DB\Interfaces\Utility as UtilityInterface;
 
 /**
- * PDO SQLite Utility Class
+ * PDO Oracle Utility Class
  *
- * Based on CodeIgniter PDO SQLite Utility Class
+ * Based on CodeIgniter PDO Oracle Utility Class
  *
  * @category      Database
  * @author        Circle Creative Developer Team
@@ -54,6 +54,13 @@ use O2System\DB\Interfaces\Utility as UtilityInterface;
  */
 class Utility extends UtilityInterface
 {
+	/**
+	 * List databases statement
+	 *
+	 * @type    string
+	 */
+	protected $_list_databases = 'SELECT username FROM dba_users'; // Schemas are actual usernames
+
 	/**
 	 * Export
 	 *

@@ -36,7 +36,7 @@
  */
 // ------------------------------------------------------------------------
 
-namespace O2System\DB\Drivers\Sqlite;
+namespace O2System\DB\Drivers\Odbc;
 
 // ------------------------------------------------------------------------
 
@@ -44,9 +44,9 @@ use O2System\DB\Exception;
 use O2System\DB\Interfaces\Utility as UtilityInterface;
 
 /**
- * PDO SQLite Utility Class
+ * PDO Cubrid Utility Class
  *
- * Based on CodeIgniter PDO SQLite Utility Class
+ * Based on CodeIgniter PDO Cubrid Utility Class
  *
  * @category      Database
  * @author        Circle Creative Developer Team
@@ -55,15 +55,34 @@ use O2System\DB\Interfaces\Utility as UtilityInterface;
 class Utility extends UtilityInterface
 {
 	/**
-	 * Export
+	 * List databases
 	 *
-	 * @param    array $params Preferences
+	 * @return    array
+	 */
+	public function list_databases()
+	{
+		if ( isset( $this->_driver->data_cache[ 'db_names' ] ) )
+		{
+			return $this->_driver->data_cache[ 'db_names' ];
+		}
+
+		return $this->_driver->data_cache[ 'db_names' ] = cubrid_list_dbs( $this->_driver->conn_id );
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * CUBRID Export
+	 *
+	 * @param    array    Preferences
 	 *
 	 * @return    mixed
 	 */
 	protected function _backup( $params = array() )
 	{
-		// Currently unsupported
+		// No SQL based support in CUBRID as of version 8.4.0. Database or
+		// table backup can be performed using CUBRID Manager
+		// database administration tool.
 		throw new Exception('Unsupported feature of the database platform you are using.');
 	}
 }

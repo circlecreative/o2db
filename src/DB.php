@@ -2,11 +2,11 @@
 /**
  * O2DB
  *
- * An open source PHP database engine driver for PHP 5.4 or newer
+ * Open Source PHP Data Object Wrapper for PHP 5.4.0 or newer
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2015, PT. Lingkar Kreasi (Circle Creative).
+ * Copyright (c) 2014, PT. Lingkar Kreasi (Circle Creative).
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,274 +26,222 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @package        O2System
- * @author         Steeven Andrian Salim
- * @copyright      Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
- * @license        http://circle-creative.com/products/o2db/license.html
- * @license        http://opensource.org/licenses/MIT   MIT License
- * @link           http://circle-creative.com/products/o2db.html
+ * @package     O2ORM
+ * @author      Steeven Andrian Salim
+ * @copyright   Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
+ * @license     http://circle-creative.com/products/o2db/license.html
+ * @license     http://opensource.org/licenses/MIT  MIT License
+ * @link        http://circle-creative.com
  * @filesource
  */
-
 // ------------------------------------------------------------------------
 
 namespace O2System
 {
-    use O2System\DB\Exception;
+	use O2System\Glob\Factory\Magics;
 
-    /**
-     * O2DB Bootstrap
-     *
-     * @category    Bootstrap Class
-     * @author      Circle Creative Developer Team
-     * @link        http://o2system.in/features/standalone/o2db.html
-     */
-    class DB
-    {
-        /**
-         * PDO Compatible Drivers List
-         *
-         * @access  protected
-         * @type    array
-         */
-        protected $_valid_drivers = array(
-            //'cubrid'     => 'Cubrid',
-            'mysql' => 'MySQL',
-            //'mssql'      => 'MsSQL',
-            //'firebird'   => 'Firebird',
-            //'ibm'        => 'IBM',
-            //'informix'   => 'Informix',
-            //'oracle'     => 'Oracle',
-            //'odbc'       => 'ODBC',
-            //'postgresql' => 'PostgreSQL',
-            'sqlite' => 'SQLite',
-            //'4d'         => '4D'
-        );
+	class DB
+	{
+		use Magics;
 
-        /**
-         * Database Class Configuration
-         *
-         * @access  protected
-         * @type    array
-         */
-        protected static $_config;
+		/**
+		 * PDO Compatible Drivers List
+		 *
+		 * @access  protected
+		 * @type    array
+		 */
+		protected $_valid_drivers = array(
+			'cubrid'   => 'Cubrid',
+			'mysql'    => 'MySQL',
+			'mssql'    => 'MsSQL',
+			'firebird' => 'Firebird',
+			'ibm'      => 'IBM',
+			'informix' => 'Informix',
+			'oci'      => 'Oracle',
+			'odbc'     => 'ODBC',
+			'pgsql'    => 'PostgreSQL',
+			'sqlite'   => 'SQLite',
+		);
+		
+		protected $_config = array();
+		
+		public $forge = FALSE;
+		public $utility = FALSE;
 
-        /**
-         * Active connection
-         *
-         * @access  protected
-         * @type    \O2System\DB\Interfaces\Connection
-         */
-        protected $_conn;
+		/**
+		 * Class Constructor
+		 *
+		 * @param array $config
+		 *
+		 * @access  public
+		 * @throws  DB\Exception
+		 */
+		public function __construct( $config )
+		{
+			if ( is_string( $config ) && strpos( $config, '://' ) !== FALSE )
+			{
+				/**
+				 * Parse the URL from the DSN string
+				 * Database settings can be passed as discreet
+				 * parameters or as a data source name in the first
+				 * parameter. DSNs must have this prototype:
+				 * $dsn = 'driver://username:password@hostname/database';
+				 */
+				if ( ( $dsn = @parse_url( $config ) ) === FALSE )
+				{
+					throw new DB\Exception( 'Invalid DB Connection String' );
+				}
 
-        /**
-         * Class Constructor
-         *
-         * @param array $config
-         *
-         * @access  public
-         */
-        public function __construct( array $config = array() )
-        {
-            if( ! empty( $config ) )
-            {
-                if(isset($config['default']))
-                {
-                    if(! empty($config['default']['dsn']) OR
-                       (! empty($config['default']['username']) AND ! empty($config['default']['password']))
-                    )
-                    {
-                        static::$_config = $config;
-                    }
-                }
-            }
+				$config = array(
+					'driver'   => $dsn[ 'scheme' ],
+					'hostname' => isset( $dsn[ 'host' ] ) ? rawurldecode( $dsn[ 'host' ] ) : '',
+					'port'     => isset( $dsn[ 'port' ] ) ? rawurldecode( $dsn[ 'port' ] ) : '',
+					'username' => isset( $dsn[ 'user' ] ) ? rawurldecode( $dsn[ 'user' ] ) : '',
+					'password' => isset( $dsn[ 'pass' ] ) ? rawurldecode( $dsn[ 'pass' ] ) : '',
+					'database' => isset( $dsn[ 'path' ] ) ? rawurldecode( substr( $dsn[ 'path' ], 1 ) ) : '',
+				);
 
-            set_exception_handler( '\O2System\DB\Exception::exception_handler' );
-        }
+				// Validate Connection
+				$config[ 'username' ] = $config[ 'username' ] === 'username' ? NULL : $config[ 'username' ];
+				$config[ 'password' ] = $config[ 'password' ] === 'password' ? NULL : $config[ 'password' ];
+				$config[ 'hostname' ] = $config[ 'hostname' ] === 'hostname' ? NULL : $config[ 'hostname' ];
 
-        // ------------------------------------------------------------------------
+				// Were additional config items set?
+				if ( isset( $dsn[ 'query' ] ) )
+				{
+					parse_str( $dsn[ 'query' ], $extra );
 
-        /**
-         * Connect
-         *
-         * Connect to database using config or dsn
-         *
-         * @param   string $connection
-         *
-         * @access  public
-         * @return  bool|DB\Interfaces\Connection
-         * @throws  DB::Error
-         */
-        public function connect( $connection = NULL )
-        {
-            $connection = empty( $connection ) ? 'default' : $connection;
+					foreach ( $extra as $key => $value )
+					{
+						if ( is_string( $value ) AND in_array( strtoupper( $value ), array( 'TRUE', 'FALSE', 'NULL' ) ) )
+						{
+							$value = var_export( $value, TRUE );
+						}
 
-            // Load the DB config file if a DSN string wasn't passed
-            if( isset( static::$_config[ $connection ] ) )
-            {
-                $connection = static::$_config[ $connection ];
-            }
-            elseif( is_string( $connection ) && strpos( $connection, '://' ) !== FALSE )
-            {
-                /**
-                 * Parse the URL from the DSN string
-                 * Database settings can be passed as discreet
-                 * parameters or as a data source name in the first
-                 * parameter. DSNs must have this prototype:
-                 * $dsn = 'driver://username:password@hostname/database';
-                 */
-                if( ( $dsn = @parse_url( $connection ) ) === FALSE )
-                {
-                    throw new Exception( 'Invalid DB Connection String', 100 );
-                }
+						$config[ $key ] = $value;
+					}
+				}
+			}
 
-                $connection = array(
-                    'driver'   => $dsn[ 'scheme' ],
-                    'hostname' => isset( $dsn[ 'host' ] ) ? rawurldecode( $dsn[ 'host' ] ) : '',
-                    'port'     => isset( $dsn[ 'port' ] ) ? rawurldecode( $dsn[ 'port' ] ) : '',
-                    'username' => isset( $dsn[ 'user' ] ) ? rawurldecode( $dsn[ 'user' ] ) : '',
-                    'password' => isset( $dsn[ 'pass' ] ) ? rawurldecode( $dsn[ 'pass' ] ) : '',
-                    'database' => isset( $dsn[ 'path' ] ) ? rawurldecode( substr( $dsn[ 'path' ], 1 ) ) : ''
-                );
+			if ( empty( $config[ 'driver' ] ) )
+			{
+				throw new DB\Exception( 'You have not selected a database type to connect to.' );
+			}
 
-                // Validate Connection
-                $connection[ 'username' ] = $connection[ 'username' ] === 'username' ? NULL : $connection[ 'username' ];
-                $connection[ 'password' ] = $connection[ 'password' ] === 'password' ? NULL : $connection[ 'password' ];
-                $connection[ 'hostname' ] = $connection[ 'hostname' ] === 'hostname' ? NULL : $connection[ 'hostname' ];
+			if ( in_array( $config[ 'driver' ], array( 'mssql', 'sybase' ) ) )
+			{
+				$config[ 'driver' ] = 'dblib';
+			}
 
-                // Were additional config items set?
-                if( isset( $dsn[ 'query' ] ) )
-                {
-                    parse_str( $dsn[ 'query' ], $extra );
+			if ( ! array_key_exists( $config[ 'driver' ], $this->_valid_drivers ) )
+			{
+				throw new DB\Exception( 'Unsupported database driver.' );
+			}
 
-                    foreach( $extra as $key => $value )
-                    {
-                        if( is_string( $value ) AND in_array( strtoupper( $value ), array( 'TRUE', 'FALSE', 'NULL' ) ) )
-                        {
-                            $value = var_export( $value, TRUE );
-                        }
+			if ( is_dir( $driver_path = __DIR__ . '/Drivers/' . ucfirst( $config[ 'driver' ] . '/' ) ) )
+			{
+				// Create DB Connection
+				$class_name = '\O2System\DB\Drivers\\' . ucfirst( $config[ 'driver' ] ) . '\\Driver';
 
-                        $connection[ $key ] = $value;
-                    }
-                }
-            }
-            else
-            {
-                throw new Exception( 'Required DB Connection Configuration', 101 );
-            }
+				// Create Instance
+				static::$_instance = new $class_name( $config );
+				static::$_instance->connect();
+				
+				if(static::$_instance->is_connected() === TRUE)
+				{
+					$this->_config = $config;
+					
+					// Create Glob Magic
+					$this->_reflection( $class_name );
+				}
+			}
+		}
 
-            if( empty( $connection[ 'driver' ] ) )
-            {
-                throw new Exception( 'You have not selected a database type to connect to.', 102 );
-            }
+		// ------------------------------------------------------------------------
+		
+		public function load( $tool )
+		{
+			switch($tool)
+			{
+				case 'forge':
+					
+					$forge_class_name = '\O2System\DB\Drivers\\' . ucfirst( $this->_config[ 'driver' ] ) . '\\Forge';
+					$this->forge = new $forge_class_name(static::$_instance);
+					
+					return $this->forge;
+					break;
+				case 'utility':
+					
+					$utility_class_name = '\O2System\DB\Drivers\\' . ucfirst( $this->_config[ 'driver' ] ) . '\\Utility';
+					$this->utility = new $utility_class_name(static::$_instance);
+					
+					return $this->utility;
+					break;
+			}
+			
+			return FALSE;
+		}
 
-            if( ! array_key_exists( $connection[ 'driver' ], $this->_valid_drivers ) )
-            {
-                throw new Exception( 'Unsupported database driver.', 103 );
-            }
-
-            if( is_dir( $driver_path = __DIR__ . '/Drivers/' . ucfirst( $connection[ 'driver' ] . '/' ) ) )
-            {
-                // Create DB Connection
-                $class_name = '\O2System\DB\Drivers\\' . ucfirst( $connection[ 'driver' ] ) . '\\Driver';
-                $this->_conn = new $class_name( $connection );
-
-                return $this->_conn;
-            }
-
-            return FALSE;
-        }
-
-        // ------------------------------------------------------------------------
-
-        /**
-         * Server supported drivers
-         *
-         * @access public
-         * @return array
-         */
-        public static function get_supported_drivers()
-        {
-            return \PDO::getAvailableDrivers();
-        }
-    }
+		/**
+		 * Server supported drivers
+		 *
+		 * @access public
+		 * @return array
+		 */
+		public static function get_supported_drivers()
+		{
+			return \PDO::getAvailableDrivers();
+		}
+	}
 }
 
 namespace O2System\DB
 {
-    use O2System\Gears\Tracer;
+	use O2System\Glob\Exception\Statement;
 
-    class Exception extends \PDOException
-    {
-        protected $statement = NULL;
+	class Exception extends Statement
+	{
+		protected $_sql = NULL;
 
-        public function __construct( $message = NULL, $code = 0, \PDOException $previous = NULL )
-        {
-            // in case they call: new MyException($somePDOException);
-            // instead of following the interface.
-            //
-            if( $message instanceof \PDOException )
-            {
-                $previous = $message;
-                $code = $previous->getCode();
-                $message = $previous->getMessage();
-            }
+		public function __construct( $message = NULL, $code = 0, $sql = NULL )
+		{
+			if( $message instanceof \PDOException )
+			{
+				$this->code = $message->getCode();
+				$this->message = $message->getMessage();
+			}
 
-            // Let PDOException do its normal thing
-            //
-            parent::__construct( $message, $code, $previous );
+			if(isset($sql))
+			{
+				$this->_sql = $sql;
+			}
 
-            // Now to correct the code number.
-            $state = $this->getMessage();
-            if( ! strstr( $state, 'SQLSTATE[' ) )
-            {
-                $state = $this->getCode();
-            }
-            if( strstr( $state, 'SQLSTATE[' ) )
-            {
-                preg_match( '/SQLSTATE\[(\w+)\] \[(\w+)\] (.*)/', $state, $matches );
-                $this->code = ( $matches[ 1 ] == 'HT000' ? $matches[ 2 ] : $matches[ 1 ] );
-                $this->message = $matches[ 3 ];
-            }
-        }
+			// Now to correct the code number.
+			$state = $this->getMessage();
 
-        public function setStatement($sql)
-        {
-            $this->statement = $sql;
-        }
+			if( ! strstr( $state, 'SQLSTATE[' ) )
+			{
+				$state = $this->getCode();
+			}
 
-        public function getStatement()
-        {
-            return $this->statement;
-        }
+			if( strstr( $state, 'SQLSTATE[' ) )
+			{
+				preg_match( '/SQLSTATE\[(\w+)\] \[(\w+)\] (.*)/', $state, $matches );
+				$this->code = ( $matches[ 1 ] == 'HT000' ? $matches[ 2 ] : $matches[ 1 ] );
+				$this->message = $matches[ 3 ];
+			}
 
-        public static function exception_handler( $exception )
-        {
-            $tracer = new Tracer( (array)$exception->getTrace() );
+			// Let PDOException do its normal thing
+			@parent::__construct( $message, $code );
 
-            if( PHP_SAPI === 'cli' )
-            {
-                $template = __DIR__ . '/Views/cli_exception.php';
-            }
-            else
-            {
-                $template = __DIR__ . '/Views/html_exception.php';
-            }
+			// Register Custom Exception View Path
+			$this->register_view_paths( __DIR__ . '/Views/');
+		}
 
-            if( ob_get_level() > 1 )
-            {
-                ob_end_flush();
-            }
-
-            header( 'HTTP/1.1 500 Internal Server Error', TRUE, 500 );
-
-            ob_start();
-            include( $template );
-            $buffer = ob_get_contents();
-            ob_end_clean();
-            echo $buffer;
-
-            exit( 1 );
-        }
-    }
+		public function getSql()
+		{
+			return $this->_sql;
+		}
+	}
 }
+

@@ -36,17 +36,16 @@
  */
 // ------------------------------------------------------------------------
 
-namespace O2System\DB\Drivers\Sqlite;
+namespace O2System\DB\Drivers\Sqlsrv;
 
 // ------------------------------------------------------------------------
 
-use O2System\DB\Exception;
 use O2System\DB\Interfaces\Forge as ForgeInterface;
 
 /**
- * PDO SQLite Forge Class
+ * PDO SQLSRV Forge Class
  *
- * Based on CodeIgniter PDO SQLite Forge Class
+ * Based on CodeIgniter PDO SQLSRV Forge Class
  *
  * @category      Database
  * @author        Circle Creative Developer Team
@@ -59,98 +58,26 @@ class Forge extends ForgeInterface
 	 *
 	 * @type    string
 	 */
-	protected $_create_table_if = 'CREATE TABLE IF NOT EXISTS';
+	protected $_create_table_if = "IF NOT EXISTS (SELECT * FROM sysobjects WHERE ID = object_id(N'%s') AND OBJECTPROPERTY(id, N'IsUserTable') = 1)\nCREATE TABLE";
 
 	/**
 	 * DROP TABLE IF statement
 	 *
 	 * @type    string
 	 */
-	protected $_drop_table_if = 'DROP TABLE IF EXISTS';
+	protected $_drop_table_if = "IF EXISTS (SELECT * FROM sysobjects WHERE ID = object_id(N'%s') AND OBJECTPROPERTY(id, N'IsUserTable') = 1)\nDROP TABLE";
 
 	/**
 	 * UNSIGNED support
 	 *
-	 * @type    bool|array
+	 * @type    array
 	 */
-	protected $_unsigned = FALSE;
-
-	/**
-	 * NULL value representation in CREATE/ALTER TABLE statements
-	 *
-	 * @type    string
-	 */
-	protected $_null = 'NULL';
-
-	// --------------------------------------------------------------------
-
-	/**
-	 * Class constructor
-	 *
-	 * @param    object &$db Database object
-	 *
-	 * @return    void
-	 */
-	public function __construct( &$db )
-	{
-		parent::__construct( $db );
-
-		if ( version_compare( $this->_driver->version(), '3.3', '<' ) )
-		{
-			$this->_create_table_if = FALSE;
-		}
-	}
-
-	// --------------------------------------------------------------------
-
-	/**
-	 * Create database
-	 *
-	 * @param    string $db_name (ignored)
-	 *
-	 * @return    bool
-	 */
-	public function create_database( $db_name = '' )
-	{
-		// In SQLite, a database is created when you connect to the database.
-		// We'll return TRUE so that an error isn't generated
-		return TRUE;
-	}
-
-	// --------------------------------------------------------------------
-
-	/**
-	 * Drop database
-	 *
-	 * @param    string $db_name (ignored)
-	 *
-	 * @return    bool
-	 */
-	public function drop_database( $db_name = '' )
-	{
-		// In SQLite, a database is dropped when we delete a file
-		if ( file_exists( $this->_driver->database ) )
-		{
-			// We need to close the pseudo-connection first
-			$this->_driver->close();
-			if ( ! @unlink( $this->_driver->database ) )
-			{
-				throw new Exception('Unable to drop the specified database.');
-			}
-			elseif ( ! empty( $this->_driver->data_cache[ 'db_names' ] ) )
-			{
-				$key = array_search( strtolower( $this->_driver->database ), array_map( 'strtolower', $this->_driver->data_cache[ 'db_names' ] ), TRUE );
-				if ( $key !== FALSE )
-				{
-					unset( $this->_driver->data_cache[ 'db_names' ][ $key ] );
-				}
-			}
-
-			return TRUE;
-		}
-
-		throw new Exception('Unable to drop the specified database.');
-	}
+	protected $_unsigned = array(
+		'TINYINT'  => 'SMALLINT',
+		'SMALLINT' => 'INT',
+		'INT'      => 'BIGINT',
+		'REAL'     => 'FLOAT',
+	);
 
 	// --------------------------------------------------------------------
 
@@ -165,41 +92,19 @@ class Forge extends ForgeInterface
 	 */
 	protected function _alter_table( $alter_type, $table, $field )
 	{
-		if ( $alter_type === 'DROP' OR $alter_type === 'CHANGE' )
+		if ( in_array( $alter_type, array( 'ADD', 'DROP' ), TRUE ) )
 		{
-			// drop_column():
-			//	BEGIN TRANSACTION;
-			//	CREATE TEMPORARY TABLE t1_backup(a,b);
-			//	INSERT INTO t1_backup SELECT a,b FROM t1;
-			//	DROP TABLE t1;
-			//	CREATE TABLE t1(a,b);
-			//	INSERT INTO t1 SELECT a,b FROM t1_backup;
-			//	DROP TABLE t1_backup;
-			//	COMMIT;
-
-			return FALSE;
+			return parent::_alter_table( $alter_type, $table, $field );
 		}
 
-		return parent::_alter_table( $alter_type, $table, $field );
-	}
+		$sql = 'ALTER TABLE ' . $this->_driver->escape_identifiers( $table ) . ' ALTER COLUMN ';
+		$sqls = array();
+		for ( $i = 0, $c = count( $field ); $i < $c; $i++ )
+		{
+			$sqls[] = $sql . $this->_process_column( $field[ $i ] );
+		}
 
-	// --------------------------------------------------------------------
-
-	/**
-	 * Process column
-	 *
-	 * @param    array $field
-	 *
-	 * @return    string
-	 */
-	protected function _process_column( $field )
-	{
-		return $this->_driver->escape_identifiers( $field[ 'name' ] )
-		. ' ' . $field[ 'type' ]
-		. $field[ 'auto_increment' ]
-		. $field[ 'null' ]
-		. $field[ 'unique' ]
-		. $field[ 'default' ];
+		return $sqls;
 	}
 
 	// --------------------------------------------------------------------
@@ -217,9 +122,13 @@ class Forge extends ForgeInterface
 	{
 		switch ( strtoupper( $attributes[ 'TYPE' ] ) )
 		{
-			case 'ENUM':
-			case 'SET':
-				$attributes[ 'TYPE' ] = 'TEXT';
+			case 'MEDIUMINT':
+				$attributes[ 'TYPE' ] = 'INTEGER';
+				$attributes[ 'UNSIGNED' ] = FALSE;
+
+				return;
+			case 'INTEGER':
+				$attributes[ 'TYPE' ] = 'INT';
 
 				return;
 			default:
@@ -241,13 +150,7 @@ class Forge extends ForgeInterface
 	{
 		if ( ! empty( $attributes[ 'AUTO_INCREMENT' ] ) && $attributes[ 'AUTO_INCREMENT' ] === TRUE && stripos( $field[ 'type' ], 'int' ) !== FALSE )
 		{
-			$field[ 'type' ] = 'INTEGER PRIMARY KEY';
-			$field[ 'default' ] = '';
-			$field[ 'null' ] = '';
-			$field[ 'unique' ] = '';
-			$field[ 'auto_increment' ] = ' AUTOINCREMENT';
-
-			$this->primary_keys = array();
+			$field[ 'auto_increment' ] = ' IDENTITY(1,1)';
 		}
 	}
 }

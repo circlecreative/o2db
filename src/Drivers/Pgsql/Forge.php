@@ -36,17 +36,16 @@
  */
 // ------------------------------------------------------------------------
 
-namespace O2System\DB\Drivers\Sqlite;
+namespace O2System\DB\Drivers\Pgsql;
 
 // ------------------------------------------------------------------------
 
-use O2System\DB\Exception;
 use O2System\DB\Interfaces\Forge as ForgeInterface;
 
 /**
- * PDO SQLite Forge Class
+ * PDO PostgreSQL Forge Class
  *
- * Based on CodeIgniter PDO SQLite Forge Class
+ * Based on CodeIgniter PDO PostgreSQL Forge Class
  *
  * @category      Database
  * @author        Circle Creative Developer Team
@@ -54,13 +53,6 @@ use O2System\DB\Interfaces\Forge as ForgeInterface;
  */
 class Forge extends ForgeInterface
 {
-	/**
-	 * CREATE TABLE IF statement
-	 *
-	 * @type    string
-	 */
-	protected $_create_table_if = 'CREATE TABLE IF NOT EXISTS';
-
 	/**
 	 * DROP TABLE IF statement
 	 *
@@ -71,9 +63,19 @@ class Forge extends ForgeInterface
 	/**
 	 * UNSIGNED support
 	 *
-	 * @type    bool|array
+	 * @type    array
 	 */
-	protected $_unsigned = FALSE;
+	protected $_unsigned = array(
+		'INT2'     => 'INTEGER',
+		'SMALLINT' => 'INTEGER',
+		'INT'      => 'BIGINT',
+		'INT4'     => 'BIGINT',
+		'INTEGER'  => 'BIGINT',
+		'INT8'     => 'NUMERIC',
+		'BIGINT'   => 'NUMERIC',
+		'REAL'     => 'DOUBLE PRECISION',
+		'FLOAT'    => 'DOUBLE PRECISION',
+	);
 
 	/**
 	 * NULL value representation in CREATE/ALTER TABLE statements
@@ -95,61 +97,10 @@ class Forge extends ForgeInterface
 	{
 		parent::__construct( $db );
 
-		if ( version_compare( $this->_driver->version(), '3.3', '<' ) )
+		if ( version_compare( $this->_driver->version(), '9.0', '>' ) )
 		{
-			$this->_create_table_if = FALSE;
+			$this->create_table_if = 'CREATE TABLE IF NOT EXISTS';
 		}
-	}
-
-	// --------------------------------------------------------------------
-
-	/**
-	 * Create database
-	 *
-	 * @param    string $db_name (ignored)
-	 *
-	 * @return    bool
-	 */
-	public function create_database( $db_name = '' )
-	{
-		// In SQLite, a database is created when you connect to the database.
-		// We'll return TRUE so that an error isn't generated
-		return TRUE;
-	}
-
-	// --------------------------------------------------------------------
-
-	/**
-	 * Drop database
-	 *
-	 * @param    string $db_name (ignored)
-	 *
-	 * @return    bool
-	 */
-	public function drop_database( $db_name = '' )
-	{
-		// In SQLite, a database is dropped when we delete a file
-		if ( file_exists( $this->_driver->database ) )
-		{
-			// We need to close the pseudo-connection first
-			$this->_driver->close();
-			if ( ! @unlink( $this->_driver->database ) )
-			{
-				throw new Exception('Unable to drop the specified database.');
-			}
-			elseif ( ! empty( $this->_driver->data_cache[ 'db_names' ] ) )
-			{
-				$key = array_search( strtolower( $this->_driver->database ), array_map( 'strtolower', $this->_driver->data_cache[ 'db_names' ] ), TRUE );
-				if ( $key !== FALSE )
-				{
-					unset( $this->_driver->data_cache[ 'db_names' ][ $key ] );
-				}
-			}
-
-			return TRUE;
-		}
-
-		throw new Exception('Unable to drop the specified database.');
 	}
 
 	// --------------------------------------------------------------------
@@ -165,41 +116,53 @@ class Forge extends ForgeInterface
 	 */
 	protected function _alter_table( $alter_type, $table, $field )
 	{
-		if ( $alter_type === 'DROP' OR $alter_type === 'CHANGE' )
+		if ( in_array( $alter_type, array( 'DROP', 'ADD' ), TRUE ) )
 		{
-			// drop_column():
-			//	BEGIN TRANSACTION;
-			//	CREATE TEMPORARY TABLE t1_backup(a,b);
-			//	INSERT INTO t1_backup SELECT a,b FROM t1;
-			//	DROP TABLE t1;
-			//	CREATE TABLE t1(a,b);
-			//	INSERT INTO t1 SELECT a,b FROM t1_backup;
-			//	DROP TABLE t1_backup;
-			//	COMMIT;
-
-			return FALSE;
+			return parent::_alter_table( $alter_type, $table, $field );
 		}
 
-		return parent::_alter_table( $alter_type, $table, $field );
-	}
+		$sql = 'ALTER TABLE ' . $this->_driver->escape_identifiers( $table );
+		$sqls = array();
+		for ( $i = 0, $c = count( $field ); $i < $c; $i++ )
+		{
+			if ( $field[ $i ][ '_literal' ] !== FALSE )
+			{
+				return FALSE;
+			}
 
-	// --------------------------------------------------------------------
+			if ( version_compare( $this->_driver->version(), '8', '>=' ) && isset( $field[ $i ][ 'type' ] ) )
+			{
+				$sqls[] = $sql . ' ALTER COLUMN ' . $this->_driver->escape_identifiers( $field[ $i ][ 'name' ] )
+					. ' TYPE ' . $field[ $i ][ 'type' ] . $field[ $i ][ 'length' ];
+			}
 
-	/**
-	 * Process column
-	 *
-	 * @param    array $field
-	 *
-	 * @return    string
-	 */
-	protected function _process_column( $field )
-	{
-		return $this->_driver->escape_identifiers( $field[ 'name' ] )
-		. ' ' . $field[ 'type' ]
-		. $field[ 'auto_increment' ]
-		. $field[ 'null' ]
-		. $field[ 'unique' ]
-		. $field[ 'default' ];
+			if ( ! empty( $field[ $i ][ 'default' ] ) )
+			{
+				$sqls[] = $sql . ' ALTER COLUMN ' . $this->_driver->escape_identifiers( $field[ $i ][ 'name' ] )
+					. ' SET DEFAULT ' . $field[ $i ][ 'default' ];
+			}
+
+			if ( isset( $field[ $i ][ 'null' ] ) )
+			{
+				$sqls[] = $sql . ' ALTER COLUMN ' . $this->_driver->escape_identifiers( $field[ $i ][ 'name' ] )
+					. ( $field[ $i ][ 'null' ] === TRUE ? ' DROP NOT NULL' : ' SET NOT NULL' );
+			}
+
+			if ( ! empty( $field[ $i ][ 'new_name' ] ) )
+			{
+				$sqls[] = $sql . ' RENAME COLUMN ' . $this->_driver->escape_identifiers( $field[ $i ][ 'name' ] )
+					. ' TO ' . $this->_driver->escape_identifiers( $field[ $i ][ 'new_name' ] );
+			}
+
+			if ( ! empty( $field[ $i ][ 'comment' ] ) )
+			{
+				$sqls[] = 'COMMENT ON COLUMN '
+					. $this->_driver->escape_identifiers( $table ) . '.' . $this->_driver->escape_identifiers( $field[ $i ][ 'name' ] )
+					. ' IS ' . $field[ $i ][ 'comment' ];
+			}
+		}
+
+		return $sqls;
 	}
 
 	// --------------------------------------------------------------------
@@ -215,11 +178,22 @@ class Forge extends ForgeInterface
 	 */
 	protected function _attr_type( &$attributes )
 	{
+		// Reset field lenghts for data types that don't support it
+		if ( isset( $attributes[ 'CONSTRAINT' ] ) && stripos( $attributes[ 'TYPE' ], 'int' ) !== FALSE )
+		{
+			$attributes[ 'CONSTRAINT' ] = NULL;
+		}
+
 		switch ( strtoupper( $attributes[ 'TYPE' ] ) )
 		{
-			case 'ENUM':
-			case 'SET':
-				$attributes[ 'TYPE' ] = 'TEXT';
+			case 'TINYINT':
+				$attributes[ 'TYPE' ] = 'SMALLINT';
+				$attributes[ 'UNSIGNED' ] = FALSE;
+
+				return;
+			case 'MEDIUMINT':
+				$attributes[ 'TYPE' ] = 'INTEGER';
+				$attributes[ 'UNSIGNED' ] = FALSE;
 
 				return;
 			default:
@@ -239,15 +213,11 @@ class Forge extends ForgeInterface
 	 */
 	protected function _attr_auto_increment( &$attributes, &$field )
 	{
-		if ( ! empty( $attributes[ 'AUTO_INCREMENT' ] ) && $attributes[ 'AUTO_INCREMENT' ] === TRUE && stripos( $field[ 'type' ], 'int' ) !== FALSE )
+		if ( ! empty( $attributes[ 'AUTO_INCREMENT' ] ) && $attributes[ 'AUTO_INCREMENT' ] === TRUE )
 		{
-			$field[ 'type' ] = 'INTEGER PRIMARY KEY';
-			$field[ 'default' ] = '';
-			$field[ 'null' ] = '';
-			$field[ 'unique' ] = '';
-			$field[ 'auto_increment' ] = ' AUTOINCREMENT';
-
-			$this->primary_keys = array();
+			$field[ 'type' ] = ( $field[ 'type' ] === 'NUMERIC' )
+				? 'BIGSERIAL'
+				: 'SERIAL';
 		}
 	}
 }

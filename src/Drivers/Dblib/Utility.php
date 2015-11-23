@@ -36,7 +36,7 @@
  */
 // ------------------------------------------------------------------------
 
-namespace O2System\DB\Drivers\Sqlite;
+namespace O2System\DB\Drivers\Dblib;
 
 // ------------------------------------------------------------------------
 
@@ -44,9 +44,9 @@ use O2System\DB\Exception;
 use O2System\DB\Interfaces\Utility as UtilityInterface;
 
 /**
- * PDO SQLite Utility Class
+ * PDO DBLIB Utility Class
  *
- * Based on CodeIgniter PDO SQLite Utility Class
+ * Based on CodeIgniter PDO DBLIB Utility Class
  *
  * @category      Database
  * @author        Circle Creative Developer Team
