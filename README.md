@@ -5,25 +5,18 @@ O2DB also the future will be equipped with SQL Forge, Schema Builder and Utiliti
 Another amazing product from [PT. Lingkar Kreasi (Circle Creative)][1], released under MIT License.
 [O2DB][2] is build for working more powerfull with O2System Framework, but also can be used for integrated with others as standalone version with limited features.
 
-Currently Supported Driver
---------
-- MySQL
-- SQLite
-For now, O2DB only supports two types of databases above. 
-We sincerely hope that the developers who use other types of databases, such as Postgre, Microsoft SQL, Oracle, 4D and others, can participate to complete O2DB.
-
 Installation
 ------------
 The best way to install O2DB is to use [Composer][8]
 ```
-composer require o2system/o2db:'dev-master'
+composer require o2system/o2db
 ```
 
 Usage
 -----
 ```
-$o2db = new \O2System\DB(array(
-  'default' => array(
+// Initialize DB
+$DB = new DB(array(
     'driver'              => 'mysql',
     'dsn'                 => '',
     'hostname'            => 'localhost',
@@ -51,55 +44,22 @@ $o2db = new \O2System\DB(array(
   )
 ));
 
-// Create DB Resource
-$DB = $o2db->connect(); // automaticaly load config default
-
 // Using DSN for MySQL
-$DB = $o2db->connect('mysql://username:password@127.0.0.1/database_name');
+$DB = new DB('mysql://username:password@127.0.0.1/database_name');
 
 // Using DSN for SQLite
-$DB = $o2db->connect('sqlite://username:password/c:\xampp\htdocs\o2db\database\data.db');
+$DB = new DB('sqlite://username:password/c:\xampp\htdocs\o2db\database\data.db');
 
 // Create a query
-$query = $DB->get_where('table_name', ['record_status' => 1]);
+$result = $DB->get_where('table_name', ['record_status' => 1]);
 
-if($query->num_rows() > 0)
+if($result->num_rows() > 0)
 {
-  foreach($query->result() as $row)
+  foreach($result as $row)
   {
-    // do something here for manipulation the row result
-  }
-}
-
-// Fething into object
-$object = new YourObjectClassName();
-
-if($query->num_rows() > 0)
-{
-  // the row become your object contains with the row result
-  foreach($query->result($object) as $row)
-  {
-    // do something here for manipulation the row result
-  }
-}
-
-// Fething into class
-if($query->num_rows() > 0)
-{
-  // the row become your class object contains with the row result
-  foreach($query->result('YourClassName') as $row)
-  {
-    // do something here for manipulation the row result
-  }
-}
-
-// Row result as array
-if($query->num_rows() > 0)
-{
-  // the row become your object contains with the row result
-  foreach($query->result('array') as $row)
-  {
-    // do something here for manipulation the row result
+    // you can call the row column like an array or an object
+    echo $row->column_name;
+    echo $row['column_name'];
   }
 }
 
