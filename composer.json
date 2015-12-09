@@ -37,7 +37,7 @@
 	"minimum-stability" : "dev",
 	"require"           : {
 		"php"              : ">=5.4.0",
-		"o2system/o2glob"  : "1.*"
+		"o2system/o2glob"  : "*"
 	},
 	"autoload"          : {
 		"psr-4" : {
