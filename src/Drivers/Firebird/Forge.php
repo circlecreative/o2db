@@ -48,7 +48,7 @@ use O2System\DB\Interfaces\Forge as ForgeInterface;
  * Based on CodeIgniter PDO Firebird Forge Class
  *
  * @category      Database
- * @author        Circle Creative Developer Team
+ * @author        O2System Developer Team
  * @link          http://o2system.in/features/o2db
  */
 class Forge extends ForgeInterface

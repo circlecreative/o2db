@@ -38,6 +38,7 @@
 
 namespace O2System
 {
+
 	use O2System\Glob\Factory\Magics;
 
 	class DB
@@ -65,7 +66,7 @@ namespace O2System
 		
 		protected $_config = array();
 		
-		public $forge = FALSE;
+		public $forge   = FALSE;
 		public $utility = FALSE;
 
 		/**
@@ -78,7 +79,7 @@ namespace O2System
 		 */
 		public function __construct( $config )
 		{
-			if ( is_string( $config ) && strpos( $config, '://' ) !== FALSE )
+			if ( is_string( $config ) AND strpos( $config, '://' ) !== FALSE )
 			{
 				/**
 				 * Parse the URL from the DSN string
@@ -147,7 +148,7 @@ namespace O2System
 				static::$_instance = new $class_name( $config );
 				static::$_instance->connect();
 				
-				if(static::$_instance->is_connected() === TRUE)
+				if ( static::$_instance->is_connected() === TRUE )
 				{
 					$this->_config = $config;
 					
@@ -161,19 +162,19 @@ namespace O2System
 		
 		public function load( $tool )
 		{
-			switch($tool)
+			switch ( $tool )
 			{
 				case 'forge':
 					
 					$forge_class_name = '\O2System\DB\Drivers\\' . ucfirst( $this->_config[ 'driver' ] ) . '\\Forge';
-					$this->forge = new $forge_class_name(static::$_instance);
+					$this->forge = new $forge_class_name( static::$_instance );
 					
 					return $this->forge;
 					break;
 				case 'utility':
 					
 					$utility_class_name = '\O2System\DB\Drivers\\' . ucfirst( $this->_config[ 'driver' ] ) . '\\Utility';
-					$this->utility = new $utility_class_name(static::$_instance);
+					$this->utility = new $utility_class_name( static::$_instance );
 					
 					return $this->utility;
 					break;
@@ -197,21 +198,24 @@ namespace O2System
 
 namespace O2System\DB
 {
-	use O2System\Glob\Exception\Statement;
 
-	class Exception extends Statement
+	use O2System\Glob\Exception\Interfaces as ExceptionInterface;
+
+	class Exception extends ExceptionInterface
 	{
 		protected $_sql = NULL;
 
 		public function __construct( $message = NULL, $code = 0, $sql = NULL )
 		{
-			if( $message instanceof \PDOException )
+			if ( $message instanceof \PDOException OR
+				$message instanceof \Exception
+			)
 			{
 				$this->code = $message->getCode();
 				$this->message = $message->getMessage();
 			}
 
-			if(isset($sql))
+			if ( isset( $sql ) )
 			{
 				$this->_sql = $sql;
 			}
@@ -219,12 +223,12 @@ namespace O2System\DB
 			// Now to correct the code number.
 			$state = $this->getMessage();
 
-			if( ! strstr( $state, 'SQLSTATE[' ) )
+			if ( ! strstr( $state, 'SQLSTATE[' ) )
 			{
 				$state = $this->getCode();
 			}
 
-			if( strstr( $state, 'SQLSTATE[' ) )
+			if ( strstr( $state, 'SQLSTATE[' ) )
 			{
 				preg_match( '/SQLSTATE\[(\w+)\] \[(\w+)\] (.*)/', $state, $matches );
 				$this->code = ( $matches[ 1 ] == 'HT000' ? $matches[ 2 ] : $matches[ 1 ] );
@@ -232,10 +236,10 @@ namespace O2System\DB
 			}
 
 			// Let PDOException do its normal thing
-			@parent::__construct( $message, $code );
+			parent::__construct( $message, $code );
 
 			// Register Custom Exception View Path
-			$this->register_view_paths( __DIR__ . '/Views/');
+			$this->register_view_paths( __DIR__ . '/Views/' );
 		}
 
 		public function getSql()
@@ -244,4 +248,3 @@ namespace O2System\DB
 		}
 	}
 }
-

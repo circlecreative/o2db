@@ -1,10 +1,10 @@
 {
-	"name"              : "o2system/o2db",
-	"description"       : "Database Drivers",
+	"name"              : "o2system/o2pdo",
+	"description"       : "PHP Data Objects (PDO) Wrapper",
 	"license"           : "MIT",
 	"version"           : "1.0.0",
 	"type"              : "php-libraries",
-	"keywords"          : [ "utilities", "php", "framework", "driver", "libraries", "database" ],
+	"keywords"          : [ "pdo", "utilities", "php", "framework", "driver", "libraries", "database" ],
 	"authors"           : [
 		{
 			"name"     : "PT. Lingkar Kreasi (Circle Creative)",
@@ -30,9 +30,9 @@
 		"forum"  : "https://www.facebook.com/groups/498147006994512"
 	},
 	"links"             : {
-		"info"        : "http://www.circle-creative.com/products/o2gears.html",
-		"wiki"        : "http://o2system.center/standalone/o2gears/user-guide/getting-started.html",
-		"github-wiki" : "http://github.com/circlecreative/o2gears/wiki"
+		"info"        : "http://www.circle-creative.com/products/o2pdo.html",
+		"wiki"        : "http://o2system.in/features/o2pdo",
+		"github-wiki" : "http://github.com/circlecreative/o2pdo/wiki"
 	},
 	"minimum-stability" : "dev",
 	"require"           : {
@@ -41,10 +41,10 @@
 	},
 	"autoload"          : {
 		"psr-4" : {
-			"O2System\\DB\\" : "src"
+			"O2System\\PDO\\" : "src"
 		},
 		"files" : [
-			"src/DB.php"
+			"src/PDO.php"
 		]
 	}
 }

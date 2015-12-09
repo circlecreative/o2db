@@ -47,7 +47,7 @@ use O2System\DB\Exception;
  * Based on CodeIgniter Database Forge Class
  *
  * @category	Database
- * @author		Circle Creative Developer Team
+ * @author		O2System Developer Team
  * @link		http://o2system.in/features/o2db
  */
 abstract class Forge

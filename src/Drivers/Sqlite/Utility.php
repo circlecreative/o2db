@@ -49,7 +49,7 @@ use O2System\DB\Interfaces\Utility as UtilityInterface;
  * Based on CodeIgniter PDO SQLite Utility Class
  *
  * @category      Database
- * @author        Circle Creative Developer Team
+ * @author        O2System Developer Team
  * @link          http://o2system.in/features/o2db
  */
 class Utility extends UtilityInterface

@@ -48,7 +48,7 @@ use O2System\DB\Factory\Row;
  * Based on CodeIgniter Database Utility Class
  *
  * @category      Database
- * @author        Circle Creative Developer Team
+ * @author        O2System Developer Team
  * @link          http://o2system.in/features/o2db
  */
 abstract class Utility

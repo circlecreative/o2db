@@ -53,7 +53,7 @@ use O2System\DB\Factory\Result;
  * Based on CodeIgniter Database Driver Class
  *
  * @category      Database
- * @author        Circle Creative Developer Team
+ * @author        O2System Developer Team
  * @link          http://o2system.in/features/o2db
  */
 abstract class Driver extends Query
@@ -329,7 +329,7 @@ abstract class Driver extends Query
 	 */
 	public $options = array();
 
-	public $row_class_name = '\O2System\DB\Factory\Row';
+	public $row_class_name = NULL;
 	public $row_class_args = NULL;
 	// --------------------------------------------------------------------
 
@@ -470,11 +470,12 @@ abstract class Driver extends Query
 			$this->connect();
 		}
 	}
+
 	// --------------------------------------------------------------------
 	
 	public function is_connected()
 	{
-		if($this->pdo_conn instanceof \PDO)
+		if ( $this->pdo_conn instanceof \PDO )
 		{
 			return TRUE;
 		}
@@ -580,7 +581,7 @@ abstract class Driver extends Query
 			$return_object === TRUE
 		)
 		{
-			if ( FALSE !== ( $cache = $this->_cache_handler->read( $sql ) ) )
+			if ( FALSE !== ( $cache = $this->_cache_handler->get( $sql ) ) )
 			{
 				return $cache;
 			}
@@ -623,6 +624,14 @@ abstract class Driver extends Query
 
 		// Increment the query counter
 		$this->query_count++;
+
+		if ( strpos( $sql, 'INSERT' ) !== FALSE OR
+			strpos( $sql, 'UPDATE' ) !== FALSE OR
+			strpos( $sql, 'DELETE' ) !== FALSE
+		)
+		{
+			return $this;
+		}
 
 		return new Result( $this );
 	}
@@ -1043,9 +1052,9 @@ abstract class Driver extends Query
 		
 		$results = $this->query( $sql );
 
-		if($results->num_rows() > 0)
+		if ( $results->num_rows() > 0 )
 		{
-			foreach($results as $row)
+			foreach ( $results as $row )
 			{
 				// Do we know from which column to get the table name?
 				if ( ! isset( $key ) )
@@ -1066,7 +1075,7 @@ abstract class Driver extends Query
 						 * assign it first.
 						 */
 						$key = $row->fields_list();
-						$key = reset($key);
+						$key = reset( $key );
 					}
 				}
 
@@ -1144,7 +1153,7 @@ abstract class Driver extends Query
 				}
 				else
 				{
-					$key = key($row);
+					$key = key( $row );
 				}
 			}
 			$this->data_cache[ 'field_names' ][ $table ][] = $row[ $key ];
@@ -1642,7 +1651,6 @@ abstract class Driver extends Query
 
 	// --------------------------------------------------------------------
 
-	
 
 	/**
 	 * Error

@@ -49,7 +49,7 @@ use O2System\DB\Interfaces\Driver as DriverInterface;
  * Based on CodeIgniter PDO DBLIB Driver Adapter Class
  *
  * @category      Database
- * @author        Circle Creative Developer Team
+ * @author        O2System Developer Team
  * @link          http://o2system.in/features/o2db
  */
 class Driver extends DriverInterface

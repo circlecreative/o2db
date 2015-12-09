@@ -40,21 +40,21 @@ namespace O2System\DB\Factory;
 
 // ------------------------------------------------------------------------
 
+use O2System\DB\Exception;
 use SeekableIterator;
 use Countable;
 use Serializable;
+use O2System\DB\Factory\Row;
 
 class Result implements SeekableIterator, Countable, Serializable
 {
-	protected $_driver         = NULL;
-	protected $_row_class_name = '\O2System\DB\Factory\Row';
-
-	protected $_position = 0;
-	protected $_rows     = array();
-	protected $_num_rows = 0;
+	protected $_statement = NULL;
+	protected $_position  = 0;
+	protected $_num_rows  = 0;
+	protected $_rows      = array();
 
 	// --------------------------------------------------------------------
-
+	
 	/**
 	 * Constructor
 	 *
@@ -62,30 +62,42 @@ class Result implements SeekableIterator, Countable, Serializable
 	 *
 	 * @access  public
 	 */
-	public function __construct( &$driver )
+	public function __construct( $driver )
 	{
-		$this->_driver =& $driver;
+		$this->_statement = $driver->pdo_statement;
 
-		if ( isset( $this->_driver->row_class_name ) )
-		{
-			$this->_row_class_name = $this->_driver->row_class_name;
-		}
-
-		$this->_fetch_rows();
+		$class = isset( $driver->row_class_name ) ? $driver->row_class_name : NULL;
+		$args = isset( $driver->row_class_args ) ? $driver->row_class_args : NULL;
+		$this->_fetch_rows( $class, $args );
 	}
-
+	
 	// --------------------------------------------------------------------
-
-
-	protected function _fetch_rows()
+	
+	protected function _fetch_rows( $class, $args )
 	{
-		while ( $row = $this->_fetch_object() )
+		if ( ! class_exists( $class ) )
 		{
-			$this->_num_rows++;
-			$this->_rows[] = $row;
+			$class = '\O2System\DB\Factory\Row';
+		}
+
+		if ( isset( $args ) )
+		{
+			while ( $row = $this->_statement->fetchObject( $class, $args ) )
+			{
+				$this->_num_rows++;
+				$this->_rows[] = $row;
+			}
+		}
+		else
+		{
+			while ( $row = $this->_statement->fetchObject( $class ) )
+			{
+				$this->_num_rows++;
+				$this->_rows[] = $row;
+			}
 		}
 	}
-
+	
 	public function seek( $position )
 	{
 		$position = $position < 0 ? 0 : $position;
@@ -93,89 +105,89 @@ class Result implements SeekableIterator, Countable, Serializable
 		if ( isset( $this->_rows[ $position ] ) )
 		{
 			$this->_position = $position;
-
+			
 			return $this->_rows[ $position ];
 		}
-
+		
 		return NULL;
 	}
-
+	
 	public function rewind()
 	{
 		$this->_position = 0;
-
+		
 		return $this->seek( $this->_position );
 	}
-
+	
 	public function current()
 	{
 		return $this->seek( $this->_position );
 	}
-
+	
 	public function key()
 	{
 		return $this->_position;
 	}
-
+	
 	public function next()
 	{
 		++$this->_position;
-
+		
 		return $this->seek( $this->_position );
 	}
-
+	
 	public function previous()
 	{
 		--$this->_position;
-
+		
 		return $this->seek( $this->_position );
 	}
-
+	
 	public function first()
 	{
 		return $this->seek( 0 );
 	}
-
+	
 	public function last()
 	{
 		return $this->seek( $this->_num_rows - 1 );
 	}
-
+	
 	public function valid()
 	{
 		return isset( $this->_rows[ $this->_position ] );
 	}
-
+	
 	public function count()
 	{
 		if ( is_int( $this->_num_rows ) )
 		{
 			return $this->_num_rows;
 		}
-
+		
 		return $this->_num_rows = count( $this->_rows );
 	}
-
+	
 	public function serialize()
 	{
 		return serialize( $this->_rows );
 	}
-
+	
 	public function unserialize( $rows )
 	{
 		$this->_rows = unserialize( $rows );
 	}
-
+	
 	public function __toString()
 	{
-		return json_encode( $this->rows );
+		return json_encode( $this->_rows );
 	}
 	
 	public function json()
 	{
 		return $this->__toString();
 	}
-
+	
 	/**
 	 * Number of rows in the result set
 	 *
@@ -185,9 +197,9 @@ class Result implements SeekableIterator, Countable, Serializable
 	{
 		return $this->count();
 	}
-
+	
 	// --------------------------------------------------------------------
-
+	
 	/**
 	 * Query result. Acts as a wrapper function for the following functions.
 	 *
@@ -199,7 +211,7 @@ class Result implements SeekableIterator, Countable, Serializable
 	{
 		return $this;
 	}
-
+	
 	// --------------------------------------------------------------------
 	/**
 	 * Rows
@@ -213,9 +225,9 @@ class Result implements SeekableIterator, Countable, Serializable
 	{
 		return $this;
 	}
-
+	
 	// ------------------------------------------------------------------------
-
+	
 	/**
 	 * Row
 	 *
@@ -230,9 +242,9 @@ class Result implements SeekableIterator, Countable, Serializable
 	{
 		return $this->seek( $position );
 	}
-
+	
 	// ------------------------------------------------------------------------
-
+	
 	/**
 	 * The following methods are normally overloaded by the identically named
 	 * methods in the platform-specific driver -- except when query caching
@@ -242,9 +254,9 @@ class Result implements SeekableIterator, Countable, Serializable
 	 * operational due to the unavailability of the database resource IDs with
 	 * cached results.
 	 */
-
+	
 	// --------------------------------------------------------------------
-
+	
 	/**
 	 * Number of fields in the result set
 	 *
@@ -254,11 +266,11 @@ class Result implements SeekableIterator, Countable, Serializable
 	 */
 	public function num_fields()
 	{
-		return $this->_driver->pdo_statement->columnCount();
+		return $this->_statement->columnCount();
 	}
-
+	
 	// --------------------------------------------------------------------
-
+	
 	/**
 	 * Fetch Field Names
 	 *
@@ -275,15 +287,15 @@ class Result implements SeekableIterator, Countable, Serializable
 		{
 			// Might trigger an E_WARNING due to not all subdrivers
 			// supporting getColumnMeta()
-			$field_names[ $i ] = @$this->_driver->pdo_statement->getColumnMeta( $i );
+			$field_names[ $i ] = @$this->_statement->getColumnMeta( $i );
 			$field_names[ $i ] = $field_names[ $i ][ 'name' ];
 		}
-
+		
 		return $field_names;
 	}
-
+	
 	// --------------------------------------------------------------------
-
+	
 	/**
 	 * Field data
 	 *
@@ -298,28 +310,33 @@ class Result implements SeekableIterator, Countable, Serializable
 		try
 		{
 			$result = array();
-
+			
 			for ( $i = 0, $c = $this->num_fields(); $i < $c; $i++ )
 			{
-				$field = $this->_driver->pdo_statement->getColumnMeta( $i );
-
+				$field = $this->_statement->getColumnMeta( $i );
+				
 				$result[ $i ] = new \stdClass();
 				$result[ $i ]->name = $field[ 'name' ];
 				$result[ $i ]->type = $field[ 'native_type' ];
 				$result[ $i ]->max_length = ( $field[ 'len' ] > 0 ) ? $field[ 'len' ] : NULL;
 				$result[ $i ]->primary_key = (int) ( ! empty( $field[ 'flags' ] ) && in_array( 'primary_key', $field[ 'flags' ], TRUE ) );
 			}
-
+			
 			return $result;
 		}
 		catch ( \Exception $e )
 		{
-			throw new \BadMethodCallException( 'Unsupported feature of the database platform you are using.' );
+			throw new Exception( $e );
 		}
 	}
-
+	
 	// --------------------------------------------------------------------
 
+	public function free()
+	{
+		$this->destroy();
+	}
+	
 	/**
 	 * Free the result
 	 *
@@ -329,48 +346,11 @@ class Result implements SeekableIterator, Countable, Serializable
 	 */
 	public function destroy()
 	{
-		if ( is_object( $this->_driver->pdo_statement ) )
+		if ( is_object( $this->_statement ) )
 		{
-			$this->_driver->pdo_statement = FALSE;
+			$this->_statement = FALSE;
 		}
 	}
-
+	
 	// --------------------------------------------------------------------
-
-	/**
-	 * Result - associative array
-	 *
-	 * Returns the result set as an array.
-	 *
-	 * Overridden by driver result classes.
-	 *
-	 * @return    array
-	 */
-	protected function _fetch_assoc()
-	{
-		return $this->_driver->pdo_statement->fetch( \PDO::FETCH_ASSOC );
-	}
-
-	// --------------------------------------------------------------------
-
-	/**
-	 * Result - object
-	 *
-	 * Returns the result set as an object.
-	 *
-	 * Overridden by driver result classes.
-	 *
-	 * @param    string $class_name
-	 *
-	 * @return    object
-	 */
-	protected function _fetch_object()
-	{
-		if ( isset( $this->_driver->row_class_args ) )
-		{
-			return $this->_driver->pdo_statement->fetchObject( $this->_row_class_name, $this->_driver->row_class_args );
-		}
-
-		return $this->_driver->pdo_statement->fetchObject( $this->_row_class_name );
-	}
 }

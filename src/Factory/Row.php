@@ -49,7 +49,7 @@ use Serializable;
  * Row Object Class
  *
  * @category    Database Class
- * @author      Circle Creative Developer Team
+ * @author      O2System Developer Team
  * @link        http://o2system.in/features/o2db/metadata/result
  */
 class Row implements IteratorAggregate, ArrayAccess, Countable, Serializable
@@ -76,11 +76,9 @@ class Row implements IteratorAggregate, ArrayAccess, Countable, Serializable
 		return $this->count();
 	}
 
-	public function &__get( $field )
+	public function __get( $field )
 	{
-		$value[ 0 ] = $this->offsetGet( $field );
-
-		return $value[ 0 ];
+		return $this->offsetGet( $field );
 	}
 
 	public function getIterator()
@@ -90,6 +88,15 @@ class Row implements IteratorAggregate, ArrayAccess, Countable, Serializable
 
 	public function offsetSet( $field, $value )
 	{
+		if ( $this->_is_json( $value ) )
+		{
+			$value = json_decode( $value );
+		}
+		elseif ( $this->_is_serialize( $value ) )
+		{
+			$value = unserialize( $value );
+		}
+
 		$this->_fields[ $field ] = $value;
 	}
 
@@ -110,7 +117,7 @@ class Row implements IteratorAggregate, ArrayAccess, Countable, Serializable
 
 	public function count()
 	{
-		if($this->_num_fields == 0)
+		if ( $this->_num_fields == 0 )
 		{
 			$this->_num_fields = count( $this->fields_list() );
 		}
@@ -269,6 +276,6 @@ class Row implements IteratorAggregate, ArrayAccess, Countable, Serializable
 
 	public function __toArray()
 	{
-		return json_decode( $this->__toString(), TRUE );
+		return $this->_fields;
 	}
 }
