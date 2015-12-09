@@ -41,10 +41,10 @@
 	},
 	"autoload"          : {
 		"psr-4" : {
-			"O2System\\PDO\\" : "src"
+			"O2System\\DB\\" : "src"
 		},
 		"files" : [
-			"src/PDO.php"
+			"src/DB.php"
 		]
 	}
 }
