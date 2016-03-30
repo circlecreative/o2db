@@ -6,7 +6,7 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014, PT. Lingkar Kreasi (Circle Creative).
+ * Copyright (c) 2014, .
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@
  *
  * @package     O2ORM
  * @author      Steeven Andrian Salim
- * @copyright   Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
+ * @copyright   Copyright (c) 2005 - 2014, .
  * @license     http://circle-creative.com/products/o2db/license.html
  * @license     http://opensource.org/licenses/MIT  MIT License
  * @link        http://circle-creative.com
@@ -40,8 +40,11 @@ namespace O2System\DB\Interfaces;
 
 // ------------------------------------------------------------------------
 
+use O2System\DB\BadMethodCallException;
+use O2System\DB\ConnectionException;
 use O2System\DB\Exception;
 use O2System\DB\Factory\Result;
+use O2System\DB\QueryException;
 
 /**
  * Database Driver Interface Class
@@ -309,7 +312,7 @@ abstract class Driver extends Query
 	 * @type    array
 	 */
 	protected $_random_keywords = array( 'RAND()', 'RAND(%d)' );
-	
+
 	/**
 	 * COUNT string
 	 *
@@ -380,7 +383,18 @@ abstract class Driver extends Query
 			}
 		}
 	}
+
 	// --------------------------------------------------------------------
+
+	public function __call( $method, $args = array() )
+	{
+		if ( method_exists( $this, $method ) )
+		{
+			return call_user_func_array( array( $this, $method ), $args );
+		}
+
+		throw new BadMethodCallException( 'DB_UNSUPPORTEDMETHODCALL', 0, [ $method ] );
+	}
 
 	/**
 	 * Database connection
@@ -413,7 +427,7 @@ abstract class Driver extends Query
 		}
 		catch ( \PDOException $e )
 		{
-			throw new Exception( $e->getMessage() );
+			throw new ConnectionException( NULL, 0, $e );
 		}
 
 		// No connection resource? Check if there is a failover else throw an error
@@ -472,14 +486,14 @@ abstract class Driver extends Query
 	}
 
 	// --------------------------------------------------------------------
-	
+
 	public function is_connected()
 	{
 		if ( $this->pdo_conn instanceof \PDO )
 		{
 			return TRUE;
 		}
-		
+
 		return FALSE;
 	}
 
@@ -625,10 +639,10 @@ abstract class Driver extends Query
 		// Increment the query counter
 		$this->query_count++;
 
-		if ( strpos( $sql, 'INSERT' ) !== FALSE OR
-			strpos( $sql, 'UPDATE' ) !== FALSE OR
-			strpos( $sql, 'DELETE' ) !== FALSE
-		)
+		$action = substr( $sql, 0, 6 );
+		$action = trim( $action );
+
+		if ( in_array( $action, [ 'INSERT', 'UPDATE', 'DELETE' ] ) )
 		{
 			return $this;
 		}
@@ -649,7 +663,14 @@ abstract class Driver extends Query
 	 */
 	public function execute( $sql )
 	{
-		return $this->pdo_conn->query( $sql );
+		try
+		{
+			return $this->pdo_conn->query( $sql );
+		}
+		catch ( \PDOException $e )
+		{
+			throw  new QueryException( $e, $sql );
+		}
 	}
 	// --------------------------------------------------------------------
 	/**
@@ -663,7 +684,7 @@ abstract class Driver extends Query
 		$this->trans_enabled = FALSE;
 	}
 	// --------------------------------------------------------------------
-	
+
 	/**
 	 * Enable/disable Transaction Strict Mode
 	 * When strict mode is enabled, if you are running multiple groups of
@@ -680,7 +701,7 @@ abstract class Driver extends Query
 		$this->trans_strict = is_bool( $mode ) ? $mode : TRUE;
 	}
 	// --------------------------------------------------------------------
-	
+
 	/**
 	 * Start Transaction
 	 *
@@ -690,16 +711,37 @@ abstract class Driver extends Query
 	 */
 	public function trans_start( $test_mode = FALSE )
 	{
-		if ( $this->trans_enabled === FALSE )
+		if ( ! $this->trans_enabled )
 		{
 			return;
 		}
+
 		// When transactions are nested we only begin/commit/rollback the outermost ones
 		if ( $this->_trans_depth > 0 )
 		{
 			$this->_trans_depth += 1;
 
 			return;
+		}
+
+		$this->trans_begin( $test_mode );
+		$this->_trans_depth += 1;
+	}
+	// --------------------------------------------------------------------
+
+	/**
+	 * Begin Transaction
+	 *
+	 * @param    bool $test_mode
+	 *
+	 * @return    bool
+	 */
+	public function trans_begin( $test_mode = FALSE )
+	{
+		// When transactions are nested we only begin/commit/rollback the outermost ones
+		if ( ! $this->trans_enabled OR $this->_trans_depth > 0 )
+		{
+			return TRUE;
 		}
 
 		// Reset the transaction failure flag.
@@ -709,8 +751,9 @@ abstract class Driver extends Query
 
 		return $this->pdo_conn->beginTransaction();
 	}
+
 	// --------------------------------------------------------------------
-	
+
 	/**
 	 * Complete Transaction
 	 *
@@ -736,7 +779,7 @@ abstract class Driver extends Query
 		// The query() function will set this flag to FALSE in the event that a query failed
 		if ( $this->_trans_status === FALSE OR $this->_trans_failure === TRUE )
 		{
-			$this->pdo_conn->rollBack();
+			$this->trans_rollback();
 
 			// If we are NOT running in strict mode, we will reset
 			// the _trans_status flag so that subsequent groups of transactions
@@ -757,7 +800,7 @@ abstract class Driver extends Query
 		return $this->pdo_conn->commit();
 	}
 	// --------------------------------------------------------------------
-	
+
 	/**
 	 * Lets you retrieve the transaction flag to determine if it has failed
 	 *
@@ -768,7 +811,43 @@ abstract class Driver extends Query
 		return $this->_trans_status;
 	}
 	// --------------------------------------------------------------------
-	
+
+	/**
+	 * Commit Transaction
+	 *
+	 * @return    bool
+	 */
+	public function trans_commit()
+	{
+		// When transactions are nested we only begin/commit/rollback the outermost ones
+		if ( ! $this->trans_enabled OR $this->_trans_depth > 0 )
+		{
+			return TRUE;
+		}
+
+		return $this->pdo_conn->commit();
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Rollback Transaction
+	 *
+	 * @return    bool
+	 */
+	public function trans_rollback()
+	{
+		// When transactions are nested we only begin/commit/rollback the outermost ones
+		if ( ! $this->trans_enabled OR $this->_trans_depth > 0 )
+		{
+			return TRUE;
+		}
+
+		return $this->pdo_conn->rollBack();
+	}
+
+	// --------------------------------------------------------------------
+
 	/**
 	 * Compile Bindings
 	 *
@@ -855,7 +934,7 @@ abstract class Driver extends Query
 		return number_format( $this->benchmark, $decimals );
 	}
 	// --------------------------------------------------------------------
-	
+
 	/**
 	 * Returns the total number of queries
 	 *
@@ -866,7 +945,7 @@ abstract class Driver extends Query
 		return $this->query_count;
 	}
 	// --------------------------------------------------------------------
-	
+
 	/**
 	 * Returns the last query that was executed
 	 *
@@ -911,7 +990,7 @@ abstract class Driver extends Query
 		return $string;
 	}
 	// --------------------------------------------------------------------
-	
+
 	/**
 	 * Escape String
 	 *
@@ -946,7 +1025,7 @@ abstract class Driver extends Query
 		return $string;
 	}
 	// --------------------------------------------------------------------
-	
+
 	/**
 	 * Escape LIKE String
 	 *
@@ -962,7 +1041,7 @@ abstract class Driver extends Query
 		return $this->escape_string( $string, TRUE );
 	}
 	// --------------------------------------------------------------------
-	
+
 
 	/**
 	 * Platform-dependant string escape
@@ -1042,14 +1121,14 @@ abstract class Driver extends Query
 		{
 			return $this->data_cache[ 'table_names' ];
 		}
-		
+
 		if ( FALSE === ( $sql = $this->_list_tables_statement( $constrain_by_prefix ) ) )
 		{
 			return FALSE;
 		}
-		
+
 		$this->data_cache[ 'table_names' ] = array();
-		
+
 		$results = $this->query( $sql );
 
 		if ( $results->num_rows() > 0 )
@@ -1201,7 +1280,7 @@ abstract class Driver extends Query
 		return ( $query ) ? $query->field_data() : FALSE;
 	}
 	// --------------------------------------------------------------------
-	
+
 	/**
 	 * Field data statement
 	 *
@@ -1217,7 +1296,7 @@ abstract class Driver extends Query
 	}
 
 	// --------------------------------------------------------------------
-	
+
 	/**
 	 * Escape the SQL Identifiers
 	 *
@@ -1296,7 +1375,7 @@ abstract class Driver extends Query
 		return $this->_insert_statement( $this->protect_identifiers( $table, TRUE, NULL, FALSE ), $fields, $values );
 	}
 	// --------------------------------------------------------------------
-	
+
 	/**
 	 * Insert statement
 	 *
@@ -1313,7 +1392,7 @@ abstract class Driver extends Query
 		return 'INSERT INTO ' . $table . ' (' . implode( ', ', $keys ) . ') VALUES (' . implode( ', ', $values ) . ')';
 	}
 	// --------------------------------------------------------------------
-	
+
 	/**
 	 * Generate an update string
 	 *
@@ -1341,7 +1420,7 @@ abstract class Driver extends Query
 		return $sql;
 	}
 	// --------------------------------------------------------------------
-	
+
 	/**
 	 * Update statement
 	 *
@@ -1377,7 +1456,7 @@ abstract class Driver extends Query
 		return (bool) preg_match( '/(<|>|!|=|\sIS NULL|\sIS NOT NULL|\sEXISTS|\sBETWEEN|\sLIKE|\sIN\s*\(|\s)/i', trim( $str ) );
 	}
 	// --------------------------------------------------------------------
-	
+
 	/**
 	 * Returns the SQL string operator
 	 *
@@ -1413,7 +1492,7 @@ abstract class Driver extends Query
 			? $match[ 0 ] : FALSE;
 	}
 	// --------------------------------------------------------------------
-	
+
 	/**
 	 * Enables a native PHP function to be run, using a platform agnostic wrapper.
 	 *
@@ -1446,7 +1525,7 @@ abstract class Driver extends Query
 	 */
 	public function disconnect()
 	{
-		if ( $this->pdo_conn )
+		if ( $this->pdo_conn instanceof \PDO )
 		{
 			$this->pdo_conn = FALSE;
 		}

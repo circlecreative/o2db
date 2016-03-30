@@ -6,7 +6,7 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014, PT. Lingkar Kreasi (Circle Creative).
+ * Copyright (c) 2014, .
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@
  *
  * @package     O2ORM
  * @author      Steeven Andrian Salim
- * @copyright   Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
+ * @copyright   Copyright (c) 2005 - 2014, .
  * @license     http://circle-creative.com/products/o2db/license.html
  * @license     http://opensource.org/licenses/MIT  MIT License
  * @link        http://circle-creative.com
@@ -39,35 +39,16 @@
 namespace O2System
 {
 
-	use O2System\Glob\Factory\Magics;
+	use O2System\DB\UndefinedDriverException;
+	use O2System\DB\UnsupportedDriverException;
+	use O2System\Glob\Interfaces\MagicInterface;
 
 	class DB
 	{
-		use Magics;
+		use MagicInterface;
 
-		/**
-		 * PDO Compatible Drivers List
-		 *
-		 * @access  protected
-		 * @type    array
-		 */
-		protected $_valid_drivers = array(
-			'cubrid'   => 'Cubrid',
-			'mysql'    => 'MySQL',
-			'mssql'    => 'MsSQL',
-			'firebird' => 'Firebird',
-			'ibm'      => 'IBM',
-			'informix' => 'Informix',
-			'oci'      => 'Oracle',
-			'odbc'     => 'ODBC',
-			'pgsql'    => 'PostgreSQL',
-			'sqlite'   => 'SQLite',
-		);
-		
-		protected $_config = array();
-		
-		public $forge   = FALSE;
-		public $utility = FALSE;
+		protected static $_instance;
+		protected        $_driver;
 
 		/**
 		 * Class Constructor
@@ -79,6 +60,18 @@ namespace O2System
 		 */
 		public function __construct( $config )
 		{
+			// Register Exception View and Language Path
+			if ( class_exists( 'O2System', FALSE ) )
+			{
+				\O2System::Exceptions()->addPath( __DIR__ );
+				\O2System::$language->addPath( __DIR__ )->load( get_class_name( $this ) );
+			}
+			else
+			{
+				\O2System\Glob::Exceptions()->addPath( __DIR__ );
+				\O2System\Glob::$language->addPath( __DIR__ )->load( get_class_name( $this ) );
+			}
+
 			if ( is_string( $config ) AND strpos( $config, '://' ) !== FALSE )
 			{
 				/**
@@ -90,7 +83,7 @@ namespace O2System
 				 */
 				if ( ( $dsn = @parse_url( $config ) ) === FALSE )
 				{
-					throw new DB\Exception( 'Invalid DB Connection String' );
+					throw new DB\Exception( 'DB_INVALIDCONNECTIONSTR' );
 				}
 
 				$config = array(
@@ -126,7 +119,7 @@ namespace O2System
 
 			if ( empty( $config[ 'driver' ] ) )
 			{
-				throw new DB\Exception( 'You have not selected a database type to connect to.' );
+				throw new UndefinedDriverException( 'DB_UNDEFINEDDRIVER' );
 			}
 
 			if ( in_array( $config[ 'driver' ], array( 'mssql', 'sybase' ) ) )
@@ -134,9 +127,22 @@ namespace O2System
 				$config[ 'driver' ] = 'dblib';
 			}
 
-			if ( ! array_key_exists( $config[ 'driver' ], $this->_valid_drivers ) )
+			$_valid_drivers = array(
+				'cubrid',
+				'mysql',
+				'mssql',
+				'firebird',
+				'ibm',
+				'informix',
+				'oci',
+				'odbc',
+				'pgsql',
+				'sqlite',
+			);
+
+			if ( ! in_array( $config[ 'driver' ], $_valid_drivers ) )
 			{
-				throw new DB\Exception( 'Unsupported database driver.' );
+				throw new UnsupportedDriverException( 'DB_UNSUPPORTEDDRIVER' );
 			}
 
 			if ( is_dir( $driver_path = __DIR__ . '/Drivers/' . ucfirst( $config[ 'driver' ] . '/' ) ) )
@@ -145,41 +151,43 @@ namespace O2System
 				$class_name = '\O2System\DB\Drivers\\' . ucfirst( $config[ 'driver' ] ) . '\\Driver';
 
 				// Create Instance
-				static::$_instance = new $class_name( $config );
-				static::$_instance->connect();
-				
-				if ( static::$_instance->is_connected() === TRUE )
+				$this->_driver = new $class_name( $config );
+				$this->_driver->connect();
+
+				if ( $this->_driver->is_connected() )
 				{
-					$this->_config = $config;
-					
-					// Create Glob Magic
-					$this->_reflection( $class_name );
+					if ( ! isset( static::$_instance ) )
+					{
+						static::$_instance = $this->_driver;
+					}
 				}
 			}
 		}
 
 		// ------------------------------------------------------------------------
-		
+
 		public function load( $tool )
 		{
+			$driver = ucfirst( strtolower( $this->_driver->platform ) );
+
 			switch ( $tool )
 			{
 				case 'forge':
-					
-					$forge_class_name = '\O2System\DB\Drivers\\' . ucfirst( $this->_config[ 'driver' ] ) . '\\Forge';
-					$this->forge = new $forge_class_name( static::$_instance );
-					
+
+					$forge_class_name = '\O2System\DB\Drivers\\' . $driver . '\\Forge';
+					$this->forge = new $forge_class_name( $this->_driver );
+
 					return $this->forge;
 					break;
 				case 'utility':
-					
-					$utility_class_name = '\O2System\DB\Drivers\\' . ucfirst( $this->_config[ 'driver' ] ) . '\\Utility';
-					$this->utility = new $utility_class_name( static::$_instance );
-					
+
+					$utility_class_name = '\O2System\DB\Drivers\\' . $driver . '\\Utility';
+					$this->utility = new $utility_class_name( $this->_driver );
+
 					return $this->utility;
 					break;
 			}
-			
+
 			return FALSE;
 		}
 
@@ -189,9 +197,27 @@ namespace O2System
 		 * @access public
 		 * @return array
 		 */
-		public static function get_supported_drivers()
+		public static function getSupportedDrivers()
 		{
 			return \PDO::getAvailableDrivers();
+		}
+
+		public function __call( $method, $args = array() )
+		{
+			if ( method_exists( $this, $method ) )
+			{
+				return call_user_func_array( array( $this, $method ), $args );
+			}
+
+			return $this->_driver->__call( $method, $args );
+		}
+
+		public static function __callStatic( $method, $args = array() )
+		{
+			if ( isset( static::$_instance ) )
+			{
+				return static::$_instance->__call( $method, $args );
+			}
 		}
 	}
 }
@@ -199,52 +225,90 @@ namespace O2System
 namespace O2System\DB
 {
 
-	use O2System\Glob\Exception\Interfaces as ExceptionInterface;
+	use O2System\Glob\Interfaces\ExceptionInterface;
 
 	class Exception extends ExceptionInterface
 	{
-		protected $_sql = NULL;
+		public $library = array(
+			'name'        => 'O2System DB (O2DB)',
+			'description' => 'Open Source PHP Data Object (PDO) Wrapper',
+			'version'     => '1.0',
+		);
 
-		public function __construct( $message = NULL, $code = 0, $sql = NULL )
+		public $view_exception = 'db_exception.php';
+
+		public function __construct( $message = NULL, $code = 0, \PDOException $previous = NULL )
 		{
-			if ( $message instanceof \PDOException OR
-				$message instanceof \Exception
-			)
+			if ( ! is_null( $previous ) )
 			{
-				$this->code = $message->getCode();
-				$this->message = $message->getMessage();
+				$this->previous = $previous;
+
+				if ( strstr( $this->previous->getMessage(), 'SQLSTATE[' ) )
+				{
+					preg_match( '/SQLSTATE\[(\w+)\] \[(\w+)\] (.*)/', $this->previous->getMessage(), $matches );
+
+					if ( ! empty( $matches ) )
+					{
+						$code = ( $matches[ 1 ] == 'HT000' || 'HY000' ? $matches[ 2 ] : $matches[ 1 ] );
+						$message = $matches[ 3 ];
+					}
+					else
+					{
+						$message = $this->previous->getMessage();
+					}
+				}
 			}
 
-			if ( isset( $sql ) )
-			{
-				$this->_sql = $sql;
-			}
-
-			// Now to correct the code number.
-			$state = $this->getMessage();
-
-			if ( ! strstr( $state, 'SQLSTATE[' ) )
-			{
-				$state = $this->getCode();
-			}
-
-			if ( strstr( $state, 'SQLSTATE[' ) )
-			{
-				preg_match( '/SQLSTATE\[(\w+)\] \[(\w+)\] (.*)/', $state, $matches );
-				$this->code = ( $matches[ 1 ] == 'HT000' ? $matches[ 2 ] : $matches[ 1 ] );
-				$this->message = $matches[ 3 ];
-			}
-
-			// Let PDOException do its normal thing
 			parent::__construct( $message, $code );
+		}
+	}
 
-			// Register Custom Exception View Path
-			$this->register_view_paths( __DIR__ . '/Views/' );
+	class ConnectionException extends Exception
+	{
+
+	}
+
+	class UndefinedDriverException extends Exception
+	{
+	}
+
+	class UnsupportedDriverException extends Exception
+	{
+		public function __construct( $message, $code = 0, $args = array() )
+		{
+			$this->_args = $args;
+			parent::__construct( $message, $code );
+		}
+	}
+
+	class BadMethodCallException extends Exception
+	{
+		public function __construct( $message, $code, $args = array() )
+		{
+			$this->_args = $args;
+			parent::__construct( $message, $code );
+		}
+	}
+
+	class QueryException extends Exception
+	{
+		protected $_statement;
+
+		public function __construct( \PDOException $pdoException, $statement )
+		{
+			parent::__construct( NULL, 0, $pdoException );
+
+			$this->setStatement( $statement );
 		}
 
-		public function getSql()
+		public function setStatement( $statement )
 		{
-			return $this->_sql;
+			$this->_statement = $statement;
+		}
+
+		public function getStatement()
+		{
+			return $this->_statement;
 		}
 	}
 }
