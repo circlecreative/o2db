@@ -1,8 +1,7 @@
 {
-	"name"              : "o2system/o2pdo",
+	"name"              : "o2system/o2db",
 	"description"       : "PHP Data Objects (PDO) Wrapper",
 	"license"           : "MIT",
-	"version"           : "1.0.0",
 	"type"              : "php-libraries",
 	"keywords"          : [ "pdo", "utilities", "php", "framework", "driver", "libraries", "database" ],
 	"authors"           : [
