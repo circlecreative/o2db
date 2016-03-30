@@ -6,7 +6,7 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014, PT. Lingkar Kreasi (Circle Creative).
+ * Copyright (c) 2014, .
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@
  *
  * @package     O2ORM
  * @author      Steeven Andrian Salim
- * @copyright   Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
+ * @copyright   Copyright (c) 2005 - 2014, .
  * @license     http://circle-creative.com/products/o2db/license.html
  * @license     http://opensource.org/licenses/MIT  MIT License
  * @link        http://circle-creative.com
@@ -54,7 +54,7 @@ class Result implements SeekableIterator, Countable, Serializable
 	protected $_rows      = array();
 
 	// --------------------------------------------------------------------
-	
+
 	/**
 	 * Constructor
 	 *
@@ -70,9 +70,9 @@ class Result implements SeekableIterator, Countable, Serializable
 		$args = isset( $driver->row_class_args ) ? $driver->row_class_args : NULL;
 		$this->_fetch_rows( $class, $args );
 	}
-	
+
 	// --------------------------------------------------------------------
-	
+
 	protected function _fetch_rows( $class, $args )
 	{
 		if ( ! class_exists( $class ) )
@@ -97,97 +97,112 @@ class Result implements SeekableIterator, Countable, Serializable
 			}
 		}
 	}
-	
+
 	public function seek( $position )
 	{
 		$position = $position < 0 ? 0 : $position;
-		
+
 		if ( isset( $this->_rows[ $position ] ) )
 		{
 			$this->_position = $position;
-			
+
 			return $this->_rows[ $position ];
 		}
-		
+
 		return NULL;
 	}
-	
+
 	public function rewind()
 	{
 		$this->_position = 0;
-		
+
 		return $this->seek( $this->_position );
 	}
-	
+
 	public function current()
 	{
 		return $this->seek( $this->_position );
 	}
-	
+
 	public function key()
 	{
 		return $this->_position;
 	}
-	
+
 	public function next()
 	{
 		++$this->_position;
-		
+
 		return $this->seek( $this->_position );
 	}
-	
+
 	public function previous()
 	{
 		--$this->_position;
-		
+
 		return $this->seek( $this->_position );
 	}
-	
+
 	public function first()
 	{
 		return $this->seek( 0 );
 	}
-	
+
 	public function last()
 	{
 		return $this->seek( $this->_num_rows - 1 );
 	}
-	
+
 	public function valid()
 	{
 		return isset( $this->_rows[ $this->_position ] );
 	}
-	
+
 	public function count()
 	{
 		if ( is_int( $this->_num_rows ) )
 		{
 			return $this->_num_rows;
 		}
-		
+
 		return $this->_num_rows = count( $this->_rows );
 	}
-	
+
 	public function serialize()
 	{
 		return serialize( $this->_rows );
 	}
-	
+
 	public function unserialize( $rows )
 	{
 		$this->_rows = unserialize( $rows );
 	}
-	
+
 	public function __toString()
 	{
 		return json_encode( $this->_rows );
 	}
-	
+
+	public function __toArray()
+	{
+		$results = array();
+
+		if($this->num_rows() > 0)
+		{
+			foreach($this->_rows as $row)
+			{
+				$results[] = $row->__toArray();
+			}
+		}
+
+		return $results;
+	}
+
 	public function json()
 	{
 		return $this->__toString();
 	}
-	
+
 	/**
 	 * Number of rows in the result set
 	 *
@@ -197,9 +212,9 @@ class Result implements SeekableIterator, Countable, Serializable
 	{
 		return $this->count();
 	}
-	
+
 	// --------------------------------------------------------------------
-	
+
 	/**
 	 * Query result. Acts as a wrapper function for the following functions.
 	 *
@@ -211,7 +226,7 @@ class Result implements SeekableIterator, Countable, Serializable
 	{
 		return $this;
 	}
-	
+
 	// --------------------------------------------------------------------
 	/**
 	 * Rows
@@ -225,9 +240,9 @@ class Result implements SeekableIterator, Countable, Serializable
 	{
 		return $this;
 	}
-	
+
 	// ------------------------------------------------------------------------
-	
+
 	/**
 	 * Row
 	 *
@@ -242,9 +257,9 @@ class Result implements SeekableIterator, Countable, Serializable
 	{
 		return $this->seek( $position );
 	}
-	
+
 	// ------------------------------------------------------------------------
-	
+
 	/**
 	 * The following methods are normally overloaded by the identically named
 	 * methods in the platform-specific driver -- except when query caching
@@ -254,9 +269,9 @@ class Result implements SeekableIterator, Countable, Serializable
 	 * operational due to the unavailability of the database resource IDs with
 	 * cached results.
 	 */
-	
+
 	// --------------------------------------------------------------------
-	
+
 	/**
 	 * Number of fields in the result set
 	 *
@@ -268,9 +283,9 @@ class Result implements SeekableIterator, Countable, Serializable
 	{
 		return $this->_statement->columnCount();
 	}
-	
+
 	// --------------------------------------------------------------------
-	
+
 	/**
 	 * Fetch Field Names
 	 *
@@ -290,12 +305,12 @@ class Result implements SeekableIterator, Countable, Serializable
 			$field_names[ $i ] = @$this->_statement->getColumnMeta( $i );
 			$field_names[ $i ] = $field_names[ $i ][ 'name' ];
 		}
-		
+
 		return $field_names;
 	}
-	
+
 	// --------------------------------------------------------------------
-	
+
 	/**
 	 * Field data
 	 *
@@ -310,18 +325,18 @@ class Result implements SeekableIterator, Countable, Serializable
 		try
 		{
 			$result = array();
-			
+
 			for ( $i = 0, $c = $this->num_fields(); $i < $c; $i++ )
 			{
 				$field = $this->_statement->getColumnMeta( $i );
-				
+
 				$result[ $i ] = new \stdClass();
 				$result[ $i ]->name = $field[ 'name' ];
 				$result[ $i ]->type = $field[ 'native_type' ];
 				$result[ $i ]->max_length = ( $field[ 'len' ] > 0 ) ? $field[ 'len' ] : NULL;
 				$result[ $i ]->primary_key = (int) ( ! empty( $field[ 'flags' ] ) && in_array( 'primary_key', $field[ 'flags' ], TRUE ) );
 			}
-			
+
 			return $result;
 		}
 		catch ( \Exception $e )
@@ -329,14 +344,14 @@ class Result implements SeekableIterator, Countable, Serializable
 			throw new Exception( $e );
 		}
 	}
-	
+
 	// --------------------------------------------------------------------
 
 	public function free()
 	{
 		$this->destroy();
 	}
-	
+
 	/**
 	 * Free the result
 	 *
@@ -351,6 +366,6 @@ class Result implements SeekableIterator, Countable, Serializable
 			$this->_statement = FALSE;
 		}
 	}
-	
+
 	// --------------------------------------------------------------------
 }

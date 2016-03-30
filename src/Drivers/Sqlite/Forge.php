@@ -6,7 +6,7 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014, PT. Lingkar Kreasi (Circle Creative).
+ * Copyright (c) 2014, .
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@
  *
  * @package     O2ORM
  * @author      Steeven Andrian Salim
- * @copyright   Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
+ * @copyright   Copyright (c) 2005 - 2014, .
  * @license     http://circle-creative.com/products/o2db/license.html
  * @license     http://opensource.org/licenses/MIT  MIT License
  * @link        http://circle-creative.com
@@ -129,7 +129,7 @@ class Forge extends ForgeInterface
 	public function drop_database( $db_name = '' )
 	{
 		// In SQLite, a database is dropped when we delete a file
-		if ( file_exists( $this->_driver->database ) )
+		if ( is_file( $this->_driver->database ) )
 		{
 			// We need to close the pseudo-connection first
 			$this->_driver->close();

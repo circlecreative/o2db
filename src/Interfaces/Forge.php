@@ -6,7 +6,7 @@
  *
  * This content is released under the MIT License (MIT)
  *
- * Copyright (c) 2014, PT. Lingkar Kreasi (Circle Creative).
+ * Copyright (c) 2014, .
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@
  *
  * @package     O2ORM
  * @author      Steeven Andrian Salim
- * @copyright   Copyright (c) 2005 - 2014, PT. Lingkar Kreasi (Circle Creative).
+ * @copyright   Copyright (c) 2005 - 2014, .
  * @license     http://circle-creative.com/products/o2db/license.html
  * @license     http://opensource.org/licenses/MIT  MIT License
  * @link        http://circle-creative.com
@@ -455,6 +455,25 @@ abstract class Forge
 
 	// --------------------------------------------------------------------
 
+	public function truncate_table( $table_name )
+	{
+		if ( $table_name === '' )
+		{
+			throw new Exception( 'A table name is required for that operation.' );
+		}
+
+		$query = $this->_truncate_table( $this->_driver->table_prefix . $table_name );
+		
+		if ( $query === FALSE )
+		{
+			throw new Exception('Unsupported feature of the database platform you are using.');
+		}
+		elseif ( $query === TRUE )
+		{
+			return TRUE;
+		}
+	}
+
 	/**
 	 * Drop Table
 	 *
@@ -470,7 +489,8 @@ abstract class Forge
 			throw new Exception( 'A table name is required for that operation.' );
 		}
 
-		$query = $this->_drop_table( $this->_driver->table_prefix . $table_name, $if_exists );
+		$query = $this->_driver->_drop_table( $this->_driver->table_prefix . $table_name, $if_exists );
+
 		if ( $query === FALSE )
 		{
 			throw new Exception('Unsupported feature of the database platform you are using.');
